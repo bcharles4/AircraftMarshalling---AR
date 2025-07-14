@@ -227,7 +227,8 @@ public class ModulePage extends AppCompatActivity {
             int itemId = item.getItemId();
 
             if (itemId == R.id.nav_simulation) {
-//                intent = new Intent(ModulePage.this, ReportIncident.class);
+                intent = new Intent(ModulePage.this, SimulationPage.class);
+                startActivity(intent);
             } else if (itemId == R.id.nav_assessment) {
                 intent = new Intent(ModulePage.this, AssessmentPage.class);
                 startActivity(intent);
