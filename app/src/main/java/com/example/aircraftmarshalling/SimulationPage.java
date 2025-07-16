@@ -22,6 +22,10 @@ import com.google.common.util.concurrent.ListenableFuture;
 import java.util.concurrent.ExecutionException;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 
+import android.view.MotionEvent;
+import android.view.View;
+import android.widget.ImageView;
+
 public class SimulationPage extends AppCompatActivity {
 
     private static final int REQUEST_CAMERA_PERMISSION = 1001;
@@ -43,6 +47,34 @@ public class SimulationPage extends AppCompatActivity {
                     new String[]{Manifest.permission.CAMERA},
                     REQUEST_CAMERA_PERMISSION);
         }
+
+        ImageView movableImage = findViewById(R.id.movableImage);
+
+        movableImage.setOnTouchListener(new View.OnTouchListener() {
+            float dX, dY;
+
+            @Override
+            public boolean onTouch(View view, MotionEvent event) {
+                switch (event.getAction()) {
+                    case MotionEvent.ACTION_DOWN:
+                        dX = view.getX() - event.getRawX();
+                        dY = view.getY() - event.getRawY();
+                        break;
+
+                    case MotionEvent.ACTION_MOVE:
+                        view.animate()
+                                .x(event.getRawX() + dX)
+                                .y(event.getRawY() + dY)
+                                .setDuration(0)
+                                .start();
+                        break;
+
+                    default:
+                        return false;
+                }
+                return true;
+            }
+        });
 
         // ✅ Bottom Navigation setup
         BottomNavigationView bottomNavigationView = findViewById(R.id.bottom_navigation);

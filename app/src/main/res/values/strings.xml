@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">AircraftMarshalling</string>
+    <string name="airplane_description">Airplane Image</string>
 </resources>
