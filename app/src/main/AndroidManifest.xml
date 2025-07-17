@@ -2,6 +2,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <!-- Add this permission here -->
+    <uses-permission android:name="android.permission.CAMERA" />
+
     <application
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -23,6 +26,9 @@
             android:exported="false" />
         <activity
             android:name=".ModulePage"
+            android:exported="false" />
+        <activity
+            android:name=".SimulationPage"
             android:exported="false" />
         <activity
             android:name=".RegisterPage"

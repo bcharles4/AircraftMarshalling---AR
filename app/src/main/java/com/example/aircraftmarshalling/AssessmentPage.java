@@ -52,9 +52,14 @@ public class AssessmentPage extends AppCompatActivity {
                 intent = new Intent(AssessmentPage.this, ModulePage.class);
                 startActivity(intent);
             } else if (itemId == R.id.nav_assessment) {
-//                intent = new Intent(AssessmentPage.this, AssessmentPage.class);
-//                startActivity(intent);
-            } else {
+                intent = new Intent(AssessmentPage.this, AssessmentPage.class);
+                startActivity(intent);
+            }
+            else if (itemId == R.id.nav_simulation) {
+                intent = new Intent(AssessmentPage.this, SimulationPage.class);
+                startActivity(intent);
+            }
+            else {
                 return false; // No action for other items
             }
 
@@ -63,7 +68,6 @@ public class AssessmentPage extends AppCompatActivity {
 //            overridePendingTransition(0, 0);
             return true;
         });
-
 
         questions[0] = findViewById(R.id.q1);
         questions[1] = findViewById(R.id.q2);
