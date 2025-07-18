@@ -19,20 +19,28 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
-    <ImageView
-        android:id="@+id/movableImage"
-        android:contentDescription="@string/airplane_description"
-        android:layout_width="250dp"
-        android:layout_height="250dp"
-        android:layout_margin="16dp"
-        android:src="@drawable/airplane"
-        android:layout_gravity="center"
-        android:scaleType="fitCenter"
-        android:layout_marginTop="50dp"
-        android:clickable="true"
-        android:focusable="true"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintStart_toStartOf="parent"/>
+    <FrameLayout
+        android:id="@+id/runwayContainer"
+        android:layout_width="match_parent"
+        android:layout_height="300dp"
+        android:background="@drawable/runway"
+        app:layout_constraintBottom_toTopOf="@id/bottom_navigation"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <ImageView
+            android:id="@+id/movableImage"
+            android:layout_width="250dp"
+            android:layout_height="250dp"
+            android:layout_gravity="center"
+            android:src="@drawable/airplane"
+            android:contentDescription="@string/airplane_description"
+            android:scaleType="fitCenter"
+            android:clickable="false"
+            android:focusable="false"
+            android:longClickable="false" />
+    </FrameLayout>
+
 
     <!-- Bottom Navigation Bar -->
     <com.google.android.material.bottomnavigation.BottomNavigationView

@@ -50,31 +50,7 @@ public class SimulationPage extends AppCompatActivity {
 
         ImageView movableImage = findViewById(R.id.movableImage);
 
-        movableImage.setOnTouchListener(new View.OnTouchListener() {
-            float dX, dY;
 
-            @Override
-            public boolean onTouch(View view, MotionEvent event) {
-                switch (event.getAction()) {
-                    case MotionEvent.ACTION_DOWN:
-                        dX = view.getX() - event.getRawX();
-                        dY = view.getY() - event.getRawY();
-                        break;
-
-                    case MotionEvent.ACTION_MOVE:
-                        view.animate()
-                                .x(event.getRawX() + dX)
-                                .y(event.getRawY() + dY)
-                                .setDuration(0)
-                                .start();
-                        break;
-
-                    default:
-                        return false;
-                }
-                return true;
-            }
-        });
 
         // ✅ Bottom Navigation setup
         BottomNavigationView bottomNavigationView = findViewById(R.id.bottom_navigation);
