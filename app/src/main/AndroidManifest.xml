@@ -3,7 +3,7 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <!-- Add this permission here -->
-    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.CAMERA" />    
 
     <application
         android:allowBackup="true"
@@ -26,6 +26,9 @@
             android:exported="false" />
         <activity
             android:name=".ModulePage"
+            android:exported="false" />
+        <activity 
+            android:name=".SimulationPage" 
             android:exported="false" />
         <activity
             android:name=".SimulationPage"

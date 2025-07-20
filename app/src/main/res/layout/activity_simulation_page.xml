@@ -6,7 +6,9 @@
     android:id="@+id/camera_page"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@color/bg_color"
     tools:context=".SimulationPage">
+
 
     <!-- CameraX PreviewView -->
     <androidx.camera.view.PreviewView
@@ -19,24 +21,48 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
-    <ImageView
-        android:id="@+id/movableImage"
-        android:contentDescription="@string/airplane_description"
-        android:layout_width="250dp"
-        android:layout_height="250dp"
-        android:src="@drawable/airplane"
-        android:scaleType="fitCenter"
-        android:clickable="true"
-        android:focusable="true"
+    <!-- Start Button -->
+    <Button
+        android:id="@+id/startSim_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Start Simulation"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:backgroundTint="@color/white"
+        android:textColor="@color/black"
+        android:textAllCaps="false"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
 
+    <FrameLayout
+        android:id="@+id/runwayContainer"
+        android:layout_width="match_parent"
+        android:layout_height="300dp"
+        android:visibility="gone"
+        android:background="@drawable/runway"
         app:layout_constraintBottom_toTopOf="@id/bottom_navigation"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginBottom="16dp"/>
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <ImageView
+            android:id="@+id/movableImage"
+            android:layout_width="250dp"
+            android:layout_height="250dp"
+            android:layout_gravity="center"
+            android:src="@drawable/airplane"
+            android:contentDescription="@string/airplane_description"
+            android:scaleType="fitCenter"
+            android:clickable="false"
+            android:focusable="false"
+            android:longClickable="false" />
+    </FrameLayout>
+
 
     <!-- Bottom Navigation Bar -->
     <com.google.android.material.bottomnavigation.BottomNavigationView
-        style="@style/BottomNavStyle"
         android:id="@+id/bottom_navigation"
         android:layout_width="match_parent"
         android:layout_height="80dp"
@@ -44,10 +70,7 @@
         app:itemIconSize="25dp"
         app:itemIconTint="@color/black"
         app:itemTextColor="@color/black"
-
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
         app:menu="@menu/bottom_nav_menu" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
