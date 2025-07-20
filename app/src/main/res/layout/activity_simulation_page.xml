@@ -6,7 +6,9 @@
     android:id="@+id/camera_page"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@color/bg_color"
     tools:context=".SimulationPage">
+
 
     <!-- CameraX PreviewView -->
     <androidx.camera.view.PreviewView
@@ -19,10 +21,27 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
+    <!-- Start Button -->
+    <Button
+        android:id="@+id/startSim_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Start Simulation"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:backgroundTint="@color/white"
+        android:textColor="@color/black"
+        android:textAllCaps="false"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
     <FrameLayout
         android:id="@+id/runwayContainer"
         android:layout_width="match_parent"
         android:layout_height="300dp"
+        android:visibility="gone"
         android:background="@drawable/runway"
         app:layout_constraintBottom_toTopOf="@id/bottom_navigation"
         app:layout_constraintStart_toStartOf="parent"

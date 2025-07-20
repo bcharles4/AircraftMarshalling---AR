@@ -26,6 +26,9 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.widget.ImageView;
 
+import android.widget.Button;
+import android.widget.FrameLayout;
+
 public class SimulationPage extends AppCompatActivity {
 
     private static final int REQUEST_CAMERA_PERMISSION = 1001;
@@ -34,11 +37,18 @@ public class SimulationPage extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_simulation_page); // Make sure this XML is named activity_simulation_page.xml
+        setContentView(R.layout.activity_simulation_page);
 
+        // 🔧 View references
         previewView = findViewById(R.id.previewView);
+        FrameLayout runwayContainer = findViewById(R.id.runwayContainer);
+        BottomNavigationView bottomNavigationView = findViewById(R.id.bottom_navigation);
+        Button startSimButton = findViewById(R.id.startSim_button); // This is from your XML Button
 
-        // Handle camera permission
+        // 🛬 Hide runway at start
+        runwayContainer.setVisibility(View.GONE);
+
+// 📷 Start camera right away (permission check)
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
                 == PackageManager.PERMISSION_GRANTED) {
             startCamera();
@@ -48,13 +58,17 @@ public class SimulationPage extends AppCompatActivity {
                     REQUEST_CAMERA_PERMISSION);
         }
 
-        ImageView movableImage = findViewById(R.id.movableImage);
-
-
+// ▶️ Start Button Logic
+        startSimButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                startSimButton.setVisibility(View.GONE);        // hide the button
+                runwayContainer.setVisibility(View.VISIBLE);    // show runway container
+            }
+        });
 
         // ✅ Bottom Navigation setup
-        BottomNavigationView bottomNavigationView = findViewById(R.id.bottom_navigation);
-        bottomNavigationView.setSelectedItemId(R.id.nav_simulation); // highlight current tab
+        bottomNavigationView.setSelectedItemId(R.id.nav_simulation);
 
         bottomNavigationView.setOnItemSelectedListener(item -> {
             int itemId = item.getItemId();
@@ -69,10 +83,11 @@ public class SimulationPage extends AppCompatActivity {
                 return false;
             }
 
-            overridePendingTransition(0, 0); // optional: no animation between screens
+            overridePendingTransition(0, 0);
             return true;
         });
     }
+
 
 
     private void startCamera() {
