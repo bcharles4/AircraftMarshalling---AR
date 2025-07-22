@@ -1,76 +1,63 @@
 package com.example.aircraftmarshalling;
 
 import android.Manifest;
+import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.PointF;
+import android.media.Image;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.View;
+import android.widget.Button;
+import android.widget.FrameLayout;
+import android.widget.TextView;
 import android.widget.Toast;
 
-import androidx.activity.EdgeToEdge;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.camera.core.Camera;
 import androidx.camera.core.CameraSelector;
+import androidx.camera.core.ImageAnalysis;
+import androidx.camera.core.ImageProxy;
 import androidx.camera.core.Preview;
 import androidx.camera.lifecycle.ProcessCameraProvider;
 import androidx.camera.view.PreviewView;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
-import androidx.core.graphics.Insets;
-import androidx.core.view.ViewCompat;
-import androidx.core.view.WindowInsetsCompat;
 
-import android.content.Intent;
-
-import com.google.common.util.concurrent.ListenableFuture;
-
-import java.util.concurrent.ExecutionException;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
-
-import android.view.MotionEvent;
-import android.view.View;
-import android.widget.ImageView;
-
-import android.widget.Button;
-import android.widget.FrameLayout;
-import android.widget.TextView;
-
-// ML Kit Pose Detection
+import com.google.common.util.concurrent.ListenableFuture;
+import com.google.mlkit.vision.common.InputImage;
 import com.google.mlkit.vision.pose.Pose;
 import com.google.mlkit.vision.pose.PoseDetection;
 import com.google.mlkit.vision.pose.PoseDetector;
 import com.google.mlkit.vision.pose.PoseLandmark;
 import com.google.mlkit.vision.pose.accurate.AccuratePoseDetectorOptions;
 
-// ML Kit Vision Common
-import com.google.mlkit.vision.common.InputImage;
-
-// CameraX Image Analysis
-import androidx.camera.core.ImageAnalysis;
-import androidx.camera.core.ImageProxy;
-
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.ExecutionException;
 
 public class SimulationPage extends AppCompatActivity {
 
     private static final int REQUEST_CAMERA_PERMISSION = 1001;
+
     private PreviewView previewView;
-    private PoseDetector poseDetector;
+    private PoseOverlayView poseOverlayView;
     private TextView poseStatusText;
+    private PoseDetector poseDetector;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
         setContentView(R.layout.activity_simulation_page);
 
-        // 🔧 View references
         previewView = findViewById(R.id.previewView);
+        poseOverlayView = findViewById(R.id.poseOverlayView);
+        poseStatusText = findViewById(R.id.poseStatusText);
+        Button startSimButton = findViewById(R.id.startSim_button);
         FrameLayout runwayContainer = findViewById(R.id.runwayContainer);
         BottomNavigationView bottomNavigationView = findViewById(R.id.bottom_navigation);
-        Button startSimButton = findViewById(R.id.startSim_button); // This is from your XML Button
-        poseStatusText = findViewById(R.id.poseStatusText);
 
-        // 🛬 Hide runway at start
         runwayContainer.setVisibility(View.GONE);
 
         AccuratePoseDetectorOptions options =
@@ -80,7 +67,6 @@ public class SimulationPage extends AppCompatActivity {
 
         poseDetector = PoseDetection.getClient(options);
 
-// 📷 Start camera right away (permission check)
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
                 == PackageManager.PERMISSION_GRANTED) {
             startCamera();
@@ -90,39 +76,26 @@ public class SimulationPage extends AppCompatActivity {
                     REQUEST_CAMERA_PERMISSION);
         }
 
-// ▶️ Start Button Logic
-        startSimButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                startSimButton.setVisibility(View.GONE);        // hide the button
-                runwayContainer.setVisibility(View.VISIBLE);    // show runway container
-
-            }
+        startSimButton.setOnClickListener(v -> {
+            startSimButton.setVisibility(View.GONE);
+            runwayContainer.setVisibility(View.VISIBLE);
         });
 
-        // ✅ Bottom Navigation setup
-        bottomNavigationView.setSelectedItemId(R.id.nav_simulation); // highlight current tab
-
+        bottomNavigationView.setSelectedItemId(R.id.nav_simulation);
 
         bottomNavigationView.setOnItemSelectedListener(item -> {
             int itemId = item.getItemId();
 
-            if (itemId == R.id.nav_simulation) {
-                return true; // Already on this page
-            } else if (itemId == R.id.nav_module) {
-                startActivity(new Intent(SimulationPage.this, ModulePage.class));
-            } else if (itemId == R.id.nav_assessment) {
-                startActivity(new Intent(SimulationPage.this, AssessmentPage.class));
-            } else {
-                return false;
-            }
+            if (itemId == R.id.nav_simulation) return true;
+            if (itemId == R.id.nav_module)
+                startActivity(new Intent(this, ModulePage.class));
+            else if (itemId == R.id.nav_assessment)
+                startActivity(new Intent(this, AssessmentPage.class));
 
-            overridePendingTransition(0, 0); // optional: no animation between screens
-
+            overridePendingTransition(0, 0);
             return true;
         });
     }
-
 
     private void startCamera() {
         ListenableFuture<ProcessCameraProvider> cameraProviderFuture =
@@ -135,20 +108,16 @@ public class SimulationPage extends AppCompatActivity {
                 Preview preview = new Preview.Builder().build();
                 CameraSelector cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA;
 
-                // 🧠 Create Image Analysis use case
                 ImageAnalysis imageAnalysis = new ImageAnalysis.Builder()
                         .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                         .build();
 
-                imageAnalysis.setAnalyzer(ContextCompat.getMainExecutor(this), image -> {
-                    processImageProxy(image);
-                });
+                imageAnalysis.setAnalyzer(ContextCompat.getMainExecutor(this), this::processImageProxy);
 
                 preview.setSurfaceProvider(previewView.getSurfaceProvider());
 
                 cameraProvider.unbindAll();
-                cameraProvider.bindToLifecycle(
-                        this, cameraSelector, preview, imageAnalysis);
+                cameraProvider.bindToLifecycle(this, cameraSelector, preview, imageAnalysis);
 
             } catch (ExecutionException | InterruptedException e) {
                 Log.e("SimulationPage", "Camera start failed", e);
@@ -158,78 +127,61 @@ public class SimulationPage extends AppCompatActivity {
 
     private void processImageProxy(ImageProxy imageProxy) {
         @androidx.annotation.OptIn(markerClass = androidx.camera.core.ExperimentalGetImage.class)
-        android.media.Image mediaImage = imageProxy.getImage();
+        Image mediaImage = imageProxy.getImage();
 
         if (mediaImage != null) {
-            InputImage image = InputImage.fromMediaImage(
-                    mediaImage, imageProxy.getImageInfo().getRotationDegrees());
+            InputImage image = InputImage.fromMediaImage(mediaImage, imageProxy.getImageInfo().getRotationDegrees());
 
             poseDetector.process(image)
-                    .addOnSuccessListener(pose -> {
-                        detectAircraftPose(pose);
-                    })
-                    .addOnFailureListener(e -> {
-                        Log.e("PoseDetection", "Detection failed", e);
-                    })
-                    .addOnCompleteListener(task -> {
-                        imageProxy.close(); // must close the image
-                    });
+                    .addOnSuccessListener(pose -> detectAircraftPose(pose, image.getWidth(), image.getHeight()))
+                    .addOnFailureListener(e -> Log.e("PoseDetection", "Detection failed", e))
+                    .addOnCompleteListener(task -> imageProxy.close());
         }
     }
 
-//    private void detectAircraftPose(Pose pose) {
-//        PoseLandmark leftHand = pose.getPoseLandmark(PoseLandmark.LEFT_WRIST);
-//        PoseLandmark rightHand = pose.getPoseLandmark(PoseLandmark.RIGHT_WRIST);
-//        PoseLandmark leftShoulder = pose.getPoseLandmark(PoseLandmark.LEFT_SHOULDER);
-//        PoseLandmark rightShoulder = pose.getPoseLandmark(PoseLandmark.RIGHT_SHOULDER);
-//
-//        if (leftHand != null && rightHand != null &&
-//                leftShoulder != null && rightShoulder != null) {
-//
-//            float leftY = leftHand.getPosition().y;
-//            float rightY = rightHand.getPosition().y;
-//
-//            runOnUiThread(() -> {
-//                poseStatusText.setVisibility(View.VISIBLE); // Show the text
-//
-//                if (leftY < leftShoulder.getPosition().y && rightY < rightShoulder.getPosition().y) {
-//                    poseStatusText.setText("🛫 All Clear Signal Detected");
-//                } else {
-//                    poseStatusText.setText("✋ Unknown Pose");
-//                }
-//            });
-//        }
-//    }
-
-    private void detectAircraftPose(Pose pose) {
-        PoseLandmark leftHand = pose.getPoseLandmark(PoseLandmark.LEFT_WRIST);
-        PoseLandmark rightHand = pose.getPoseLandmark(PoseLandmark.RIGHT_WRIST);
+    private void detectAircraftPose(Pose pose, int imageWidth, int imageHeight) {
+        PoseLandmark leftWrist = pose.getPoseLandmark(PoseLandmark.LEFT_WRIST);
+        PoseLandmark rightWrist = pose.getPoseLandmark(PoseLandmark.RIGHT_WRIST);
         PoseLandmark leftShoulder = pose.getPoseLandmark(PoseLandmark.LEFT_SHOULDER);
         PoseLandmark rightShoulder = pose.getPoseLandmark(PoseLandmark.RIGHT_SHOULDER);
 
-        if (leftHand != null && rightHand != null &&
-                leftShoulder != null && rightShoulder != null) {
+        if (leftWrist != null && rightWrist != null && leftShoulder != null && rightShoulder != null) {
 
-            float leftY = leftHand.getPosition().y;
-            float rightY = rightHand.getPosition().y;
-            float leftShoulderY = leftShoulder.getPosition().y;
-            float rightShoulderY = rightShoulder.getPosition().y;
+            int viewWidth = previewView.getWidth();
+            int viewHeight = previewView.getHeight();
+
+            Map<String, PointF> posePoints = new HashMap<>();
+            posePoints.put("LEFT_WRIST", mapPoint(leftWrist, imageWidth, imageHeight, viewWidth, viewHeight));
+            posePoints.put("RIGHT_WRIST", mapPoint(rightWrist, imageWidth, imageHeight, viewWidth, viewHeight));
+            posePoints.put("LEFT_SHOULDER", mapPoint(leftShoulder, imageWidth, imageHeight, viewWidth, viewHeight));
+            posePoints.put("RIGHT_SHOULDER", mapPoint(rightShoulder, imageWidth, imageHeight, viewWidth, viewHeight));
 
             runOnUiThread(() -> {
-                poseStatusText.setVisibility(View.VISIBLE); // Show the text
+                poseOverlayView.updatePosePoints(posePoints);
 
-                if (leftY < leftShoulderY && rightY >= rightShoulderY) {
-                    poseStatusText.setText("🖐 Left Hand Raised");
-                } else if (rightY < rightShoulderY && leftY >= leftShoulderY) {
-                    poseStatusText.setText("🖐 Right Hand Raised");
+                float leftY = leftWrist.getPosition().y;
+                float rightY = rightWrist.getPosition().y;
+                float leftShoulderY = leftShoulder.getPosition().y;
+                float rightShoulderY = rightShoulder.getPosition().y;
+
+                poseStatusText.setVisibility(View.VISIBLE);
+
+                if (rightY < rightShoulderY && leftY >= leftShoulderY) {
+                    poseStatusText.setText(getString(R.string.right_hand_raised));
+                } else if (leftY < leftShoulderY && rightY >= rightShoulderY) {
+                    poseStatusText.setText(getString(R.string.left_hand_raised));
                 } else {
-                    poseStatusText.setText("✋ Unknown Pose");
+                    poseStatusText.setText(getString(R.string.unknown_pose));
                 }
             });
         }
     }
 
-
+    private PointF mapPoint(PoseLandmark landmark, int imageWidth, int imageHeight, int viewWidth, int viewHeight) {
+        float x = landmark.getPosition().x * ((float) viewWidth / imageWidth);
+        float y = landmark.getPosition().y * ((float) viewHeight / imageHeight);
+        return new PointF(x, y);
+    }
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
@@ -238,7 +190,6 @@ public class SimulationPage extends AppCompatActivity {
         if (requestCode == REQUEST_CAMERA_PERMISSION) {
             if (grantResults.length > 0 &&
                     grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-
                 startCamera();
             } else {
                 Toast.makeText(this, "Camera permission denied", Toast.LENGTH_SHORT).show();
