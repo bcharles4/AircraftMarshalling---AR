@@ -52,6 +52,15 @@ import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import java.lang.reflect.Type;
 
+import org.tensorflow.lite.Interpreter;
+import java.nio.MappedByteBuffer;
+import java.nio.channels.FileChannel;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+
+
+
+
 public class SimulationPage extends AppCompatActivity {
 
     private static final int REQUEST_CAMERA_PERMISSION = 1001;
@@ -78,6 +87,20 @@ public class SimulationPage extends AppCompatActivity {
     private static final long GESTURE_COOLDOWN_MS = 3000; // 3 sec
     private boolean gestureDetected = false;
 
+
+    private Interpreter tflite;
+    private String[] labelNames = {
+            "chalk_installed",
+            "emergency_stop",
+            "turn_left",
+            "normal_stop",
+            "negative",
+            "start_engine",
+            "None",
+            "go_straight",
+            "turn_right",
+            "slow_down"
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -121,6 +144,15 @@ public class SimulationPage extends AppCompatActivity {
             startSimButton.setVisibility(View.GONE);
             runwayContainer.setVisibility(View.VISIBLE);
         });
+
+        try {
+            tflite = new Interpreter(loadModelFile("pose_action_model.tflite"));
+            Log.d("TFLite", "Model loaded successfully!");
+        } catch (Exception e) {
+            e.printStackTrace();
+            Toast.makeText(this, "Failed to load model", Toast.LENGTH_LONG).show();
+        }
+
 
         bottomNavigationView.setSelectedItemId(R.id.nav_simulation);
 
@@ -214,28 +246,42 @@ public class SimulationPage extends AppCompatActivity {
                 }
             }
 
-            // Real-time gesture detection
-            if (!isRecording && savedGesture != null && !savedGesture.isEmpty() &&
-                recordedSequence.size() == RECORD_DURATION_FRAMES) {
-                float similarity = calculateSimilarity(recordedSequence, savedGesture);
-
-                Log.d("GestureDetection", "Similarity: " + similarity);
-
-                if (similarity < SIMILARITY_THRESHOLD &&
-                        System.currentTimeMillis() - lastGestureTime > GESTURE_COOLDOWN_MS) {
-
-                    runOnUiThread(() -> {
-                        poseStatusText.setText("Detected: GO FORWARD");
-                        Toast.makeText(this, "✈️ Gesture detected!", Toast.LENGTH_SHORT).show();
-                    });
-
-                    gestureDetected = true;
-                    lastGestureTime = System.currentTimeMillis();
-                } else if (!gestureDetected) {
-                    runOnUiThread(() -> poseStatusText.setText("Waiting for Gesture..."));
+            // Real-time gesture detection using TFLite model
+            if (!isRecording && recordedSequence.size() == RECORD_DURATION_FRAMES) {
+                // Convert recordedSequence to float input tensor
+                float[][][] input = new float[1][RECORD_DURATION_FRAMES][recordedSequence.get(0).size()];
+                for (int i = 0; i < RECORD_DURATION_FRAMES; i++) {
+                    for (int j = 0; j < recordedSequence.get(i).size(); j++) {
+                        input[0][i][j] = recordedSequence.get(i).get(j);
+                    }
                 }
-            } else if (!gestureDetected) {
-                runOnUiThread(() -> poseStatusText.setText("Waiting for Gesture..."));
+
+                float[][] output = new float[4][labelNames.length];
+
+                // Run inference
+                tflite.run(input, output);
+
+                // Use first row (or average across all 4 if needed)
+                float[] probs = output[0];
+
+                // Find the best class
+                int bestIndex = 0;
+                float bestScore = probs[0];
+                for (int i = 1; i < labelNames.length; i++) {
+                    if (probs[i] > bestScore) {
+                        bestScore = probs[i];
+                        bestIndex = i;
+                    }
+                }
+
+                String detectedAction = labelNames[bestIndex];
+
+                runOnUiThread(() -> {
+                    poseStatusText.setText("Detected: " + detectedAction);
+                    Toast.makeText(this, "✈️ Action: " + detectedAction, Toast.LENGTH_SHORT).show();
+                });
+
+                lastGestureTime = System.currentTimeMillis();
             }
 
             // Cooldown reset after detection
@@ -377,6 +423,16 @@ public class SimulationPage extends AppCompatActivity {
 
         return gesture;
     }
+
+    private MappedByteBuffer loadModelFile(String modelName) throws IOException {
+        try (FileInputStream fis = new FileInputStream(getAssets().openFd(modelName).getFileDescriptor());
+             FileChannel fileChannel = fis.getChannel()) {
+            long startOffset = getAssets().openFd(modelName).getStartOffset();
+            long declaredLength = getAssets().openFd(modelName).getDeclaredLength();
+            return fileChannel.map(FileChannel.MapMode.READ_ONLY, startOffset, declaredLength);
+        }
+    }
+
 
 
 
