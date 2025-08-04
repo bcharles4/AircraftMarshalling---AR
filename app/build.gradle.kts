@@ -52,4 +52,8 @@ dependencies {
     // PreviewView UI component
     implementation ("androidx.camera:camera-view:1.3.1")
 
+    // If you want to use the base sdk
+    implementation("com.google.mlkit:pose-detection:17.0.1-beta1")
+    implementation("com.google.mlkit:pose-detection-accurate:17.0.1-beta1")
+
 }
