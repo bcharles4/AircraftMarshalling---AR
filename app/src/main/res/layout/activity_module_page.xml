@@ -8,6 +8,18 @@
     android:background="@color/bg_color"
     tools:context=".ModulePage">
 
+    <ImageView
+        android:id="@+id/logout_button"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_margin="16dp"
+        android:src="@drawable/ic_logout"
+        android:contentDescription="Logout"
+        android:background="@android:color/transparent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        android:elevation="8dp" />
+
 
     <!-- Top Container with Logo -->
     <LinearLayout
@@ -19,6 +31,7 @@
         android:gravity="center"
         android:background="@color/bg_color"
         app:layout_constraintTop_toTopOf="parent">
+
 
         <ImageView
             android:id="@+id/logo"

@@ -57,9 +57,16 @@ public class SimulationPage extends AppCompatActivity {
     private PoseDetector poseDetector;
     private TextView poseStatusText;
 
+    private String email, name, phone;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        Intent intent = getIntent();
+        name = intent.getStringExtra("name");
+        email = intent.getStringExtra("email");
+        phone = intent.getStringExtra("phone");
 
         setContentView(R.layout.activity_simulation_page);
 
@@ -110,9 +117,17 @@ public class SimulationPage extends AppCompatActivity {
             if (itemId == R.id.nav_simulation) {
                 return true; // Already on this page
             } else if (itemId == R.id.nav_module) {
-                startActivity(new Intent(SimulationPage.this, ModulePage.class));
+                Intent moduleIntent = new Intent(SimulationPage.this, ModulePage.class);
+                moduleIntent.putExtra("name", getIntent().getStringExtra("name"));
+                moduleIntent.putExtra("email", getIntent().getStringExtra("email"));
+                moduleIntent.putExtra("phone", getIntent().getStringExtra("phone"));
+                startActivity(moduleIntent);
             } else if (itemId == R.id.nav_assessment) {
-                startActivity(new Intent(SimulationPage.this, AssessmentPage.class));
+                Intent intent1 = new Intent(SimulationPage.this, AssessmentPage.class);
+                intent1.putExtra("name", getIntent().getStringExtra("name")); // or pass stored variable
+                intent1.putExtra("email", getIntent().getStringExtra("email"));
+                intent1.putExtra("phone", getIntent().getStringExtra("phone"));
+                startActivity(intent1);
             } else {
                 return false;
             }

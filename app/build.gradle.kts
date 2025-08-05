@@ -55,5 +55,5 @@ dependencies {
     // If you want to use the base sdk
     implementation("com.google.mlkit:pose-detection:17.0.1-beta1")
     implementation("com.google.mlkit:pose-detection-accurate:17.0.1-beta1")
-
+    implementation("com.android.volley:volley:1.2.1")
 }
