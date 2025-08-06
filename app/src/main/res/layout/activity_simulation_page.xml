@@ -67,21 +67,6 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
 
-        <Button
-            android:id="@+id/recordButton"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Record Gesture"
-            android:textSize="16sp"
-            android:textStyle="bold"
-            android:backgroundTint="@color/white"
-            android:textColor="@color/black"
-            android:textAllCaps="false"
-            app:layout_constraintBottom_toTopOf="@id/startSim_button"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            android:layout_marginBottom="12dp" />
-
         <ImageView
             android:id="@+id/movableImage"
             android:layout_width="250dp"
