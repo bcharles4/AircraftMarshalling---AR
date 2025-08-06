@@ -6,6 +6,7 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 
 import androidx.activity.EdgeToEdge;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
@@ -14,6 +15,9 @@ import androidx.core.view.WindowInsetsCompat;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 
 public class ModulePage extends AppCompatActivity {
+
+    private String name, email, phone;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -216,8 +220,27 @@ public class ModulePage extends AppCompatActivity {
             startActivity(intent);
         });
 
+        ImageView logoutButton = findViewById(R.id.logout_button);
+        logoutButton.setOnClickListener(v -> {
+            new AlertDialog.Builder(ModulePage.this)
+                    .setTitle("Logout")
+                    .setMessage("Are you sure you want to logout?")
+                    .setPositiveButton("Yes", (dialog, which) -> {
+                        Intent intent = new Intent(ModulePage.this, LoginPage.class);
+                        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                        startActivity(intent);
+                        finish(); // Close current activity
+                    })
+                    .setNegativeButton("No", (dialog, which) -> dialog.dismiss())
+                    .show();
+        });
 
 
+
+        Intent intent2 = getIntent();
+        name = intent2.getStringExtra("name");
+        email = intent2.getStringExtra("email");
+        phone = intent2.getStringExtra("phone");
 
         BottomNavigationView bottomNavigationView = findViewById(R.id.bottom_navigation);
         bottomNavigationView.setSelectedItemId(R.id.nav_module);
@@ -227,11 +250,18 @@ public class ModulePage extends AppCompatActivity {
             int itemId = item.getItemId();
 
             if (itemId == R.id.nav_simulation) {
-                intent = new Intent(ModulePage.this, SimulationPage.class);
-                startActivity(intent);
+                Intent simulationtIntent = new Intent(ModulePage.this, SimulationPage.class);
+                simulationtIntent.putExtra("name", name);
+                simulationtIntent.putExtra("email", email);
+                simulationtIntent.putExtra("phone", phone);
+                startActivity(simulationtIntent);
             } else if (itemId == R.id.nav_assessment) {
-                intent = new Intent(ModulePage.this, AssessmentPage.class);
-                startActivity(intent);
+                Intent intent1 = new Intent(ModulePage.this, AssessmentPage.class);
+                intent1.putExtra("name", getIntent().getStringExtra("name")); // or pass stored variable
+                intent1.putExtra("email", getIntent().getStringExtra("email"));
+                intent1.putExtra("phone", getIntent().getStringExtra("phone"));
+                startActivity(intent1);
+
             } else {
                 return false; // No action for other items
             }

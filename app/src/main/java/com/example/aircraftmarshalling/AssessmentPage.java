@@ -55,7 +55,8 @@ public class AssessmentPage extends AppCompatActivity {
                 intent = new Intent(AssessmentPage.this, AssessmentPage.class);
                 startActivity(intent);
             }
-             else if (itemId == R.id.nav_simulation) {
+            else if (itemId == R.id.nav_simulation) {
+
                 intent = new Intent(AssessmentPage.this, SimulationPage.class);
                 startActivity(intent);
             }

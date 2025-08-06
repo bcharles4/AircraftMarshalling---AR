@@ -29,20 +29,6 @@ android {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
-
-    packagingOptions {
-        resources {
-            excludes += "META-INF/*"
-        }
-        jniLibs {
-            useLegacyPackaging = true
-        }
-    }
-
-    // This is the correct way to disable compression for tflite in Kotlin DSL
-    androidResources {
-        noCompress += listOf("tflite")
-    }
 }
 
 dependencies {
@@ -70,8 +56,6 @@ dependencies {
     implementation("com.google.mlkit:pose-detection:17.0.1-beta1")
     implementation("com.google.mlkit:pose-detection-accurate:17.0.1-beta1")
 
-    implementation("com.google.code.gson:gson:2.10.1")
+    implementation("com.android.volley:volley:1.2.1")
 
-    implementation("org.tensorflow:tensorflow-lite:2.14.0")
-    implementation("org.tensorflow:tensorflow-lite-select-tf-ops:2.14.0")
 }
