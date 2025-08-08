@@ -204,16 +204,16 @@ public class SimulationPage extends AppCompatActivity {
             });
 
             // Optional: Draw points
-            int viewWidth = previewView.getWidth();
-            int viewHeight = previewView.getHeight();
-            Map<String, PointF> posePoints = new HashMap<>();
-            posePoints.put("LEFT_WRIST", mapPoint(leftWrist, imageWidth, imageHeight, viewWidth, viewHeight));
-            posePoints.put("RIGHT_WRIST", mapPoint(rightWrist, imageWidth, imageHeight, viewWidth, viewHeight));
-            posePoints.put("LEFT_ELBOW", mapPoint(leftElbow, imageWidth, imageHeight, viewWidth, viewHeight));
-            posePoints.put("RIGHT_ELBOW", mapPoint(rightElbow, imageWidth, imageHeight, viewWidth, viewHeight));
-            posePoints.put("LEFT_SHOULDER", mapPoint(leftShoulder, imageWidth, imageHeight, viewWidth, viewHeight));
-            posePoints.put("RIGHT_SHOULDER", mapPoint(rightShoulder, imageWidth, imageHeight, viewWidth, viewHeight));
-            runOnUiThread(() -> poseOverlayView.updatePosePoints(posePoints));
+//            int viewWidth = previewView.getWidth();
+//            int viewHeight = previewView.getHeight();
+//            Map<String, PointF> posePoints = new HashMap<>();
+//            posePoints.put("LEFT_WRIST", mapPoint(leftWrist, imageWidth, imageHeight, viewWidth, viewHeight));
+//            posePoints.put("RIGHT_WRIST", mapPoint(rightWrist, imageWidth, imageHeight, viewWidth, viewHeight));
+//            posePoints.put("LEFT_ELBOW", mapPoint(leftElbow, imageWidth, imageHeight, viewWidth, viewHeight));
+//            posePoints.put("RIGHT_ELBOW", mapPoint(rightElbow, imageWidth, imageHeight, viewWidth, viewHeight));
+//            posePoints.put("LEFT_SHOULDER", mapPoint(leftShoulder, imageWidth, imageHeight, viewWidth, viewHeight));
+//            posePoints.put("RIGHT_SHOULDER", mapPoint(rightShoulder, imageWidth, imageHeight, viewWidth, viewHeight));
+//            runOnUiThread(() -> poseOverlayView.updatePosePoints(posePoints));
         }
     }
 
