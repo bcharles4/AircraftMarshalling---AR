@@ -2,12 +2,12 @@ package com.example.aircraftmarshalling;
 
 import android.content.Intent;
 import android.os.Bundle;
-import android.view.View;
 import android.widget.Button;
-import android.widget.ImageView;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
 import android.widget.Toast;
+import android.view.View;
+
 
 import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AlertDialog;
@@ -16,23 +16,10 @@ import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
-import com.android.volley.Request;
-import com.android.volley.RequestQueue;
-import com.android.volley.toolbox.JsonObjectRequest;
-import com.android.volley.toolbox.Volley;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 
-import org.json.JSONException;
-import org.json.JSONObject;
-import android.widget.TextView;
-
-
 public class AssessmentPage extends AppCompatActivity {
-
-
     RadioGroup[] questions = new RadioGroup[8];
-    private String name, email, phone;
-
     int[] correctAnswers = {
             0, // q1: "Start the engine"
             2, // q2: "Stop immediately"
@@ -43,7 +30,6 @@ public class AssessmentPage extends AppCompatActivity {
             2, // q7: "Reduce taxiing speed"
             0  // q8: "Transfer control to next marshal"
     };
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -55,58 +41,33 @@ public class AssessmentPage extends AppCompatActivity {
             return insets;
         });
 
-
-        ImageView logoutButton = findViewById(R.id.logout_button);
-        logoutButton.setOnClickListener(v -> {
-            new AlertDialog.Builder(AssessmentPage.this)
-                    .setTitle("Logout")
-                    .setMessage("Are you sure you want to logout?")
-                    .setPositiveButton("Yes", (dialog, which) -> {
-                        Intent intent = new Intent(AssessmentPage.this, LoginPage.class);
-                        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-                        startActivity(intent);
-                        finish(); // Close current activity
-                    })
-                    .setNegativeButton("No", (dialog, which) -> dialog.dismiss())
-                    .show();
-        });
-
-
-        // Retrieve user data from intent
-        Intent intent = getIntent();
-        name = intent.getStringExtra("name");
-        email = intent.getStringExtra("email");
-        phone = intent.getStringExtra("phone");
-
-//// Set the name in the TextView
-//        TextView tvUserName = findViewById(R.id.tv_user_name);
-//        tvUserName.setText("Welcome, " + name);
-
-
         BottomNavigationView bottomNavigationView = findViewById(R.id.bottom_navigation);
         bottomNavigationView.setSelectedItemId(R.id.nav_assessment);
 
         bottomNavigationView.setOnItemSelectedListener(item -> {
+            Intent intent;
             int itemId = item.getItemId();
 
             if (itemId == R.id.nav_module) {
-                Intent moduleIntent = new Intent(AssessmentPage.this, ModulePage.class);
-                moduleIntent.putExtra("name", name);
-                moduleIntent.putExtra("email", email);
-                moduleIntent.putExtra("phone", phone);
-                startActivity(moduleIntent);
-                return true;
-            } else if (itemId == R.id.nav_simulation) {
-                Intent simulationIntent = new Intent(AssessmentPage.this, SimulationPage.class);
-                simulationIntent.putExtra("name", name);
-                simulationIntent.putExtra("email", email);
-                simulationIntent.putExtra("phone", phone);
-                startActivity(simulationIntent);
-                return true;
+                intent = new Intent(AssessmentPage.this, ModulePage.class);
+                startActivity(intent);
             } else if (itemId == R.id.nav_assessment) {
-                return true;
+                intent = new Intent(AssessmentPage.this, AssessmentPage.class);
+                startActivity(intent);
             }
-            return false;
+            else if (itemId == R.id.nav_simulation) {
+
+                intent = new Intent(AssessmentPage.this, SimulationPage.class);
+                startActivity(intent);
+            }
+            else {
+                return false; // No action for other items
+            }
+
+//            intent.putExtra("user_email", userEmail);
+//            startActivity(intent);
+//            overridePendingTransition(0, 0);
+            return true;
         });
 
         questions[0] = findViewById(R.id.q1);
@@ -119,8 +80,16 @@ public class AssessmentPage extends AppCompatActivity {
         questions[7] = findViewById(R.id.q8);
 
         Button submitBtn = findViewById(R.id.submitButton);
-        submitBtn.setOnClickListener(v -> checkAnswers());
+        submitBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                checkAnswers();
+            }
+        });
+
+
     }
+
 
     private void checkAnswers() {
         int score = 0;
@@ -141,36 +110,11 @@ public class AssessmentPage extends AppCompatActivity {
             }
         }
 
-        updateScoreInBackend(score); // Call API to update score
-
+        // Show result
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("Assessment Result")
                 .setMessage("You got " + score + " out of 8 correct.")
                 .setPositiveButton("OK", null)
                 .show();
-    }
-
-    private void updateScoreInBackend(int score) {
-        String url = "https://aircraft-marshalling-f350337809da.herokuapp.com/api/users/score/" + name;
-
-        JSONObject body = new JSONObject();
-        try {
-            body.put("score", score);
-        } catch (JSONException e) {
-            e.printStackTrace();
-            Toast.makeText(this, "Failed to create score update body", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        JsonObjectRequest scoreRequest = new JsonObjectRequest(
-                Request.Method.PUT,
-                url,
-                body,
-                response -> Toast.makeText(this, "", Toast.LENGTH_SHORT).show(),
-                error -> Toast.makeText(this, "Failed to update score", Toast.LENGTH_SHORT).show()
-        );
-
-        RequestQueue queue = Volley.newRequestQueue(this);
-        queue.add(scoreRequest);
     }
 }

@@ -2,4 +2,7 @@
     <string name="app_name">AircraftMarshalling</string>
     <string name="airplane_description">Airplane Image</string>
     <string name="runway_description">Runway Image</string>
+    <string name="left_hand_raised">🖐 Left Hand Raised</string>
+    <string name="right_hand_raised">🖐 Right Hand Raised</string>
+    <string name="unknown_pose">✋ Unknown Pose</string>
 </resources>

@@ -21,6 +21,11 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
+    <com.example.aircraftmarshalling.PoseOverlayView
+        android:id="@+id/poseOverlayView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
     <TextView
         android:id="@+id/poseStatusText"
         android:layout_width="wrap_content"
@@ -57,15 +62,15 @@
         android:layout_width="match_parent"
         android:layout_height="300dp"
         android:visibility="gone"
-        android:background="@drawable/runway"
+
         app:layout_constraintBottom_toTopOf="@id/bottom_navigation"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
 
         <ImageView
             android:id="@+id/movableImage"
-            android:layout_width="250dp"
-            android:layout_height="250dp"
+            android:layout_width="220dp"
+            android:layout_height="220dp"
             android:layout_gravity="center"
             android:src="@drawable/airplane"
             android:contentDescription="@string/airplane_description"
@@ -73,6 +78,7 @@
             android:clickable="false"
             android:focusable="false"
             android:longClickable="false" />
+
     </FrameLayout>
 
 
