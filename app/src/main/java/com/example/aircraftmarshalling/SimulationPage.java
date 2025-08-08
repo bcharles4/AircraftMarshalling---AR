@@ -148,7 +148,7 @@ public class SimulationPage extends AppCompatActivity {
                 ProcessCameraProvider cameraProvider = cameraProviderFuture.get();
 
                 Preview preview = new Preview.Builder().build();
-                CameraSelector cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA;
+                CameraSelector cameraSelector = CameraSelector.DEFAULT_FRONT_CAMERA;
 
                 // 🧠 Create Image Analysis use case
                 ImageAnalysis imageAnalysis = new ImageAnalysis.Builder()
