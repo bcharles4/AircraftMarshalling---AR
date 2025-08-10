@@ -35,7 +35,6 @@
         android:textColor="@android:color/white"
         android:textStyle="bold"
         android:background="@android:color/transparent"
-        android:visibility="gone"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"

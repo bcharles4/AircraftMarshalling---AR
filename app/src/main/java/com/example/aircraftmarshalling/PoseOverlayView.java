@@ -46,9 +46,13 @@ public class PoseOverlayView extends View {
             canvas.drawCircle(point.x, point.y, DOT_RADIUS, dotPaint);
         }
 
-        // Draw shoulder-wrist lines
-        drawLineBetween(canvas, "LEFT_SHOULDER", "LEFT_WRIST");
-        drawLineBetween(canvas, "RIGHT_SHOULDER", "RIGHT_WRIST");
+        // Left arm: shoulder → elbow → wrist
+        drawLineBetween(canvas, "LEFT_SHOULDER", "LEFT_ELBOW");
+        drawLineBetween(canvas, "LEFT_ELBOW", "LEFT_WRIST");
+
+        // Right arm: shoulder → elbow → wrist
+        drawLineBetween(canvas, "RIGHT_SHOULDER", "RIGHT_ELBOW");
+        drawLineBetween(canvas, "RIGHT_ELBOW", "RIGHT_WRIST");
     }
 
     private void drawLineBetween(Canvas canvas, String start, String end) {
@@ -58,4 +62,5 @@ public class PoseOverlayView extends View {
             canvas.drawLine(startPt.x, startPt.y, endPt.x, endPt.y, linePaint);
         }
     }
+
 }
