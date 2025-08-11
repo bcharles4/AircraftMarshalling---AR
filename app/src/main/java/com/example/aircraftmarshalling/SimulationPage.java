@@ -140,9 +140,6 @@ public class SimulationPage extends AppCompatActivity {
     private long phaseStartTime = 0;
     private String lastDetectionResult = "";
 
-    // For tracking step-based gestures like waving
-    private boolean waveStep1Done = false, waveStep2Done = false;
-    private boolean leftWaveStep1Done = false, leftWaveStep2Done = false;
 
     // --- Main Detection ---
     private void detectAircraftPose(Pose pose, int imageWidth, int imageHeight) {
@@ -182,33 +179,64 @@ public class SimulationPage extends AppCompatActivity {
         }
 
         long elapsed = (currentTime - phaseStartTime) / 1000;
-        long remainingDetection = 5 - elapsed;
+        long remainingDetection = 4 - elapsed;
 
         if (remainingDetection > 0) {
             runOnUiThread(() -> poseStatusText.setText("Detecting Action (" + remainingDetection + ")"));
         }
 
         // Run all detectors
-        boolean rightWave = detectWaveRight(rightWrist, rightElbow);
-        boolean leftWave = detectWaveLeft(leftWrist, leftElbow);
-        boolean leftArmRaised = detectLeftArmRaised(leftWrist, leftElbow, leftShoulder);
         boolean startEngine = detectStartEngine(leftWrist, leftElbow, leftShoulder, rightWrist, rightElbow, rightShoulder);
+        boolean negativeSignal = detectNegative(leftShoulder, leftElbow, leftWrist, rightElbow, rightWrist);
+        boolean normalStop = detectNormalStop(leftWrist, leftElbow, leftShoulder, rightWrist, rightElbow, rightShoulder); // ✅ New detector
+        boolean emergencyStop = detectEmergencyStop(leftWrist, leftElbow, leftShoulder, rightWrist, rightElbow, rightShoulder); // ✅ New detector
+        boolean holdPosition = detectHoldPosition(leftShoulder, leftElbow,leftWrist, rightShoulder,rightElbow,rightWrist);
+        boolean turnRight = detectTurnRight(leftWrist, leftElbow, leftShoulder, rightWrist, rightElbow, rightShoulder);
+        boolean chalkInstalled = detectChalkInstalled(leftShoulder, leftElbow, leftWrist, rightShoulder, rightElbow, rightWrist);
+        boolean slowDown = detectSlowDown(leftShoulder, leftElbow, leftWrist, rightShoulder, rightElbow, rightWrist);
+        boolean shutOffEngine = detectShutOffEngine(leftShoulder, leftElbow, leftWrist, rightShoulder, rightElbow, rightWrist);
+        boolean passControl = detectPassControl(leftShoulder, leftElbow, leftWrist, rightShoulder, rightElbow, rightWrist);
+        boolean engineFire = detectEngineOnFire(leftWrist, leftElbow, leftShoulder, rightWrist, rightElbow, rightShoulder);
+        boolean brakeFire = detectBrakesOnFire(leftWrist, leftElbow, leftShoulder, rightWrist, rightElbow, rightShoulder);
 
         // End of 5-second detection
-        if (elapsed >= 5) {
-            if (rightWave && leftWave) {
-                lastDetectionResult = "Both Wave";
+        if (elapsed >= 4) {
+            if (normalStop) { // ✅ Added
+                lastDetectionResult = "Normal Stop";
+            }
+            else if (emergencyStop) { // ✅ Added
+                lastDetectionResult = "Emergency Stop";
             }
             else if (startEngine) {
                 lastDetectionResult = "Start Engine";
             }
-            else if (rightWave) {
-                lastDetectionResult = "Wave";
+            else if (turnRight) {
+                lastDetectionResult = "Turn Right";
             }
-            else if (leftArmRaised) {
-                lastDetectionResult = "Left Arm Raised";
+            else if (engineFire) {
+                lastDetectionResult = "Engine on Fire";
             }
-             else {
+            else if (brakeFire) {
+                lastDetectionResult = "Brakes on Fire";
+            }
+            else if (slowDown) {
+                lastDetectionResult = "Slow Down";
+            }
+            else if (shutOffEngine) {
+                lastDetectionResult = "Shut Off Engine";
+            }
+            else if (passControl) {
+                lastDetectionResult = "Pass Control";
+            }
+            else if (negativeSignal) {
+                lastDetectionResult = "Negative";
+            }
+            else if (chalkInstalled) {
+                lastDetectionResult = "Chalk Installed";
+            }
+            else if (holdPosition) {
+                lastDetectionResult = "Hold Position";
+            } else {
                 lastDetectionResult = "Unknown";
             }
 
@@ -219,50 +247,11 @@ public class SimulationPage extends AppCompatActivity {
             phaseStartTime = currentTime;
         }
 
+
+
         // Always update overlay
         updateSkeletonOverlay(imageWidth, imageHeight, leftWrist, rightWrist, leftElbow, rightElbow, leftShoulder, rightShoulder);
     }
-
-    // --- Gesture detection functions ---
-    private boolean detectWaveRight(PoseLandmark wrist, PoseLandmark elbow) {
-        if (!waveStep1Done &&
-                wrist.getPosition().x < elbow.getPosition().x &&
-                wrist.getPosition().y < elbow.getPosition().y) {
-            waveStep1Done = true;
-        }
-        if (waveStep1Done && !waveStep2Done &&
-                wrist.getPosition().x > elbow.getPosition().x &&
-                wrist.getPosition().y < elbow.getPosition().y) {
-            waveStep2Done = true;
-        }
-        return waveStep1Done && waveStep2Done;
-    }
-
-    private boolean detectWaveLeft(PoseLandmark wrist, PoseLandmark elbow) {
-        if (!leftWaveStep1Done &&
-                wrist.getPosition().x > elbow.getPosition().x &&
-                wrist.getPosition().y < elbow.getPosition().y) {
-            leftWaveStep1Done = true;
-        }
-        if (leftWaveStep1Done && !leftWaveStep2Done &&
-                wrist.getPosition().x < elbow.getPosition().x &&
-                wrist.getPosition().y < elbow.getPosition().y) {
-            leftWaveStep2Done = true;
-        }
-        return leftWaveStep1Done && leftWaveStep2Done;
-    }
-
-    private boolean detectLeftArmRaised(PoseLandmark lw, PoseLandmark le, PoseLandmark ls) {
-        if (lw == null || le == null || ls == null) return false;
-
-        // Left arm raised to the right ("/" pose):
-        return (
-                le.getPosition().x > ls.getPosition().x && // elbow is left of shoulder
-                        lw.getPosition().y < le.getPosition().y && // wrist above elbow
-                        lw.getPosition().x > le.getPosition().x    // wrist right of elbow
-        );
-    }
-
 
 
     // Tracking phases
@@ -278,7 +267,8 @@ public class SimulationPage extends AppCompatActivity {
         // Pose 1: left arm static "/" + right arm up, wrist left of elbow
         boolean leftArmStatic = (
                 le.getPosition().x > ls.getPosition().x && // elbow is left of shoulder
-                        lw.getPosition().y < le.getPosition().y && // wrist above elbow
+                        lw.getPosition().y < le.getPosition().y &&
+                        le.getPosition().y < ls.getPosition().y &&// wrist above elbow
                         lw.getPosition().x > le.getPosition().x    // wrist right of elbow
         );
         boolean rightArmUp = (
@@ -308,12 +298,574 @@ public class SimulationPage extends AppCompatActivity {
         return startEnginePose1Done && startEnginePose2Done;
     }
 
+    private boolean detectNegative(PoseLandmark ls, PoseLandmark le, PoseLandmark lw,
+                                   PoseLandmark re, PoseLandmark rw) {
+
+        // Pose 1: Left arm down, right arm out to the side (wrist right of elbow)
+        boolean leftArmDown = (
+                lw.getPosition().y > le.getPosition().y && // wrist below elbow
+                        le.getPosition().y > ls.getPosition().y    // elbow below shoulder
+        );
+
+        boolean rightArmSide = (
+                rw.getPosition().y < le.getPosition().y && // right wrist above left elbow
+                        rw.getPosition().x < re.getPosition().x    // wrist right of elbow
+        );
+
+        // For static pose, both conditions must be true at the same time
+        return leftArmDown && rightArmSide;
+    }
+
+    // Tracking phases
+    private boolean normalStopPose1Done = false;
+    private boolean normalStopPose2Done = false;
+
+    private boolean detectNormalStop(PoseLandmark lw, PoseLandmark le, PoseLandmark ls,
+                                     PoseLandmark rw, PoseLandmark re, PoseLandmark rs) {
+
+        // Pose 1: Both arms down
+        boolean leftArmDown = (
+                le.getPosition().y > ls.getPosition().y && // elbow below shoulder
+                        lw.getPosition().y > le.getPosition().y    // wrist below elbow
+        );
+        boolean rightArmDown = (
+                re.getPosition().y > rs.getPosition().y && // elbow below shoulder
+                        rw.getPosition().y > re.getPosition().y    // wrist below elbow
+        );
+
+        if (!normalStopPose1Done &&
+                leftArmDown &&
+                rightArmDown) {
+
+            normalStopPose1Done = true;
+        }
+
+        // Pose 2: Both arms up over the head
+        boolean leftArmUp = (
+                lw.getPosition().y < le.getPosition().y && // wrist above elbow
+                        le.getPosition().y < ls.getPosition().y    // elbow above shoulder
+        );
+        boolean rightArmUp = (
+                rw.getPosition().y < re.getPosition().y && // wrist above elbow
+                        re.getPosition().y < rs.getPosition().y    // elbow above shoulder
+        );
+
+        if (normalStopPose1Done &&
+                !normalStopPose2Done &&
+                leftArmUp &&
+                rightArmUp) {
+
+            normalStopPose2Done = true;
+        }
+
+        return normalStopPose1Done && normalStopPose2Done;
+    }
+
+    // Tracking phases for Emergency Stop
+    private boolean emergencyStopPose1Done = false;
+    private boolean emergencyStopPose2Done = false;
+    private boolean emergencyStopPose3Done = false;
+    private boolean emergencyStopPose4Done = false;
+
+    private boolean detectEmergencyStop(PoseLandmark lw, PoseLandmark le, PoseLandmark ls,
+                                        PoseLandmark rw, PoseLandmark re, PoseLandmark rs) {
+
+        // Arms must be stretched upwards above the head (Y-axis check)
+        boolean leftArmUp = (
+                lw.getPosition().y < le.getPosition().y && // wrist above elbow
+                        le.getPosition().y < ls.getPosition().y    // elbow above shoulder
+        );
+        boolean rightArmUp = (
+                rw.getPosition().y < re.getPosition().y && // wrist above elbow
+                        re.getPosition().y < rs.getPosition().y    // elbow above shoulder
+        );
+
+        // Frame 1: Both wrists positioned LEFT of their respective elbows (X-axis check)
+        // This is the first wave position
+        if (!emergencyStopPose1Done &&
+                leftArmUp &&
+                rightArmUp &&
+                lw.getPosition().x < le.getPosition().x &&  // left wrist to the left of left elbow
+                rw.getPosition().x > re.getPosition().x) {  // right wrist to the left of right elbow
+
+            emergencyStopPose1Done = true;
+        }
+
+        // Frame 2: Both wrists positioned RIGHT of their respective elbows
+        // Indicates a swing from left to right
+        if (emergencyStopPose1Done &&
+                !emergencyStopPose2Done &&
+                leftArmUp &&
+                rightArmUp &&
+                lw.getPosition().x > le.getPosition().x &&  // left wrist to the right of left elbow
+                rw.getPosition().x < re.getPosition().x) {  // right wrist to the right of right elbow
+
+            emergencyStopPose2Done = true;
+        }
+
+        // Frame 3: Both wrists LEFT again (swing back)
+        if (emergencyStopPose2Done &&
+                !emergencyStopPose3Done &&
+                leftArmUp &&
+                rightArmUp &&
+                lw.getPosition().x < le.getPosition().x &&
+                rw.getPosition().x > re.getPosition().x) {
+
+            emergencyStopPose3Done = true;
+        }
+
+        // Frame 4: Both wrists RIGHT again (second forward swing)
+        if (emergencyStopPose3Done &&
+                !emergencyStopPose4Done &&
+                leftArmUp &&
+                rightArmUp &&
+                lw.getPosition().x > le.getPosition().x &&
+                rw.getPosition().x < re.getPosition().x) {
+
+            emergencyStopPose4Done = true;
+        }
+
+        // Only return true when all 4 waving phases are completed in order
+        return emergencyStopPose1Done &&
+                emergencyStopPose2Done &&
+                emergencyStopPose3Done &&
+                emergencyStopPose4Done;
+    }
+
+    private boolean detectHoldPosition(
+            PoseLandmark ls, PoseLandmark le, PoseLandmark lw, // left shoulder, elbow, wrist
+            PoseLandmark rs, PoseLandmark re, PoseLandmark rw  // right shoulder, elbow, wrist
+    ) {
+        // --- LEFT ARM CHECK (\ shape) ---
+        boolean leftArmDown = (
+                lw.getPosition().y > le.getPosition().y && // wrist lower than elbow (downward)
+                        le.getPosition().y > ls.getPosition().y    // elbow lower than shoulder (downward)
+        );
+
+        boolean leftArmDiagonal = (
+                lw.getPosition().x > le.getPosition().x && // wrist is further LEFT than elbow
+                        le.getPosition().x > ls.getPosition().x    // elbow is further LEFT than shoulder
+        );
+
+        // --- RIGHT ARM CHECK (/ shape) ---
+        boolean rightArmDown = (
+                rw.getPosition().y > re.getPosition().y && // wrist lower than elbow (downward)
+                        re.getPosition().y > rs.getPosition().y    // elbow lower than shoulder (downward)
+        );
+
+        boolean rightArmDiagonal = (
+                rw.getPosition().x < re.getPosition().x && // wrist is further RIGHT than elbow
+                        re.getPosition().x < rs.getPosition().x    // elbow is further RIGHT than shoulder
+        );
+
+        // Both arms must be in the down-diagonal positions at the same time
+        return leftArmDown && leftArmDiagonal && rightArmDown && rightArmDiagonal;
+    }
+
+    // Tracking phases for Turn Right with continuous waving
+    private boolean turnRightPose1Done = false;
+    private boolean turnRightPose2Done = false;
+    private boolean turnRightPose3Done = false;
+    private boolean turnRightPose4Done = false;
+    private long turnRightStartTime = 0;
+
+    private boolean detectTurnRight(
+            PoseLandmark lw, PoseLandmark le, PoseLandmark ls, // left wrist, elbow, shoulder
+            PoseLandmark rw, PoseLandmark re, PoseLandmark rs  // right wrist, elbow, shoulder
+    ) {
+        long now = System.currentTimeMillis();
+
+        boolean leftArmRightAngle = (
+                ls.getPosition().x < le.getPosition().x && // shoulder X < elbow X
+                        le.getPosition().x < lw.getPosition().x    // elbow X < wrist X
+        );
+
+        // --- RIGHT ARM: raised up ---
+        boolean rightArmUp = (
+                rw.getPosition().y < re.getPosition().y    // wrist above elbow
+        );
+
+        // --- Frame 1: wrist LEFT of elbow ---
+        if (!turnRightPose1Done &&
+                leftArmRightAngle &&
+                rightArmUp &&
+                rw.getPosition().x < re.getPosition().x) {
+
+            turnRightPose1Done = true;
+            turnRightStartTime = now;
+        }
+
+        // --- Frame 2: wrist RIGHT of elbow ---
+        if (turnRightPose1Done &&
+                !turnRightPose2Done &&
+                (now - turnRightStartTime <= 3000) &&
+                leftArmRightAngle &&
+                rightArmUp &&
+                rw.getPosition().x > re.getPosition().x) {
+
+            turnRightPose2Done = true;
+        }
+
+        // --- Frame 3: wrist LEFT of elbow ---
+        if (turnRightPose2Done &&
+                !turnRightPose3Done &&
+                (now - turnRightStartTime <= 3000) &&
+                leftArmRightAngle &&
+                rightArmUp &&
+                rw.getPosition().x < re.getPosition().x) {
+
+            turnRightPose3Done = true;
+        }
+
+        // --- Frame 4: wrist RIGHT of elbow ---
+        if (turnRightPose3Done &&
+                !turnRightPose4Done &&
+                (now - turnRightStartTime <= 3000) &&
+                leftArmRightAngle &&
+                rightArmUp &&
+                rw.getPosition().x > re.getPosition().x) {
+
+            turnRightPose4Done = true;
+        }
+
+        return turnRightPose1Done && turnRightPose2Done && turnRightPose3Done && turnRightPose4Done;
+    }
+
+
+    private boolean detectChalkInstalled(
+            PoseLandmark ls, PoseLandmark le, PoseLandmark lw, // left shoulder, elbow, wrist
+            PoseLandmark rs, PoseLandmark re, PoseLandmark rw  // right shoulder, elbow, wrist
+    ) {
+        // --- Left Arm Up ---
+        boolean leftArmUp = (
+                lw.getPosition().y < le.getPosition().y && // wrist above elbow
+                        le.getPosition().y < ls.getPosition().y    // elbow above shoulder
+        );
+
+        // --- Right Arm Up ---
+        boolean rightArmUp = (
+                rw.getPosition().y < re.getPosition().y && // wrist above elbow
+                        re.getPosition().y < rs.getPosition().y    // elbow above shoulder
+        );
+
+        // --- Additional X-axis rules ---
+        boolean xPositionCheck = (
+                rw.getPosition().x < re.getPosition().x && // right wrist left of right elbow
+                        lw.getPosition().x > le.getPosition().x    // left wrist right of left elbow
+        );
+
+        // --- Static pose detection ---
+        return leftArmUp && rightArmUp && xPositionCheck;
+    }
+
+    // Tracking phases for Slow Down
+    private boolean slowDownPose1Done = false;
+    private boolean slowDownPose2Done = false;
+    private long slowDownStartTime = 0;
+
+    private boolean detectSlowDown(
+            PoseLandmark ls, PoseLandmark le, PoseLandmark lw, // left shoulder, elbow, wrist
+            PoseLandmark rs, PoseLandmark re, PoseLandmark rw  // right shoulder, elbow, wrist
+    ) {
+        long now = System.currentTimeMillis();
+
+        // --- LEFT ARM CHECK (\ shape) ---
+        boolean leftArmDown = (
+                lw.getPosition().y > le.getPosition().y && // wrist lower than elbow
+                        le.getPosition().y > ls.getPosition().y    // elbow lower than shoulder
+        );
+        boolean leftArmDiagonal = (
+                lw.getPosition().x > le.getPosition().x && // wrist further LEFT than elbow
+                        le.getPosition().x > ls.getPosition().x    // elbow further LEFT than shoulder
+        );
+
+        // --- RIGHT ARM CHECK (/ shape) ---
+        boolean rightArmDown = (
+                rw.getPosition().y > re.getPosition().y && // wrist lower than elbow
+                        re.getPosition().y > rs.getPosition().y    // elbow lower than shoulder
+        );
+        boolean rightArmDiagonal = (
+                rw.getPosition().x < re.getPosition().x && // wrist further RIGHT than elbow
+                        re.getPosition().x < rs.getPosition().x    // elbow further RIGHT than shoulder
+        );
+
+        // --- Phase 1: arms diagonal down + wrists BELOW elbows ---
+        if (!slowDownPose1Done &&
+                leftArmDown &&
+                rightArmDown &&
+                leftArmDiagonal &&
+                rightArmDiagonal) {
+
+            slowDownPose1Done = true;
+            slowDownStartTime = now;
+        }
+
+        // --- Phase 2: arms still diagonal down + wrists ABOVE elbows ---
+        boolean wristsAboveElbows = (
+                lw.getPosition().y < le.getPosition().y && // left wrist above left elbow
+                        rw.getPosition().y < re.getPosition().y    // right wrist above right elbow
+        );
+
+        if (slowDownPose1Done &&
+                !slowDownPose2Done &&
+                (now - slowDownStartTime <= 3000) &&
+                leftArmDiagonal &&
+                rightArmDiagonal &&
+                wristsAboveElbows &&
+                // elbows still below shoulders
+                (le.getPosition().y > ls.getPosition().y && re.getPosition().y > rs.getPosition().y)) {
+
+            slowDownPose2Done = true;
+        }
+
+        return slowDownPose1Done && slowDownPose2Done;
+    }
+
+    // Tracking phases for Shut Off Engine
+    private boolean shutOffEnginePose1Done = false;
+    private boolean shutOffEnginePose2Done = false;
+    private long shutOffEngineStartTime = 0;
+
+    private boolean detectShutOffEngine(
+            PoseLandmark ls, PoseLandmark le, PoseLandmark lw, // left shoulder, elbow, wrist
+            PoseLandmark rs, PoseLandmark re, PoseLandmark rw  // right shoulder, elbow, wrist
+    ) {
+        long now = System.currentTimeMillis();
+
+        // --- LEFT ARM DOWN ---
+        boolean leftArmDown = (
+                lw.getPosition().y > le.getPosition().y && // wrist below elbow
+                        le.getPosition().y > ls.getPosition().y    // elbow below shoulder
+        );
+
+        // --- RIGHT ARM UP ---
+        boolean rightArmUp = (
+                rw.getPosition().y < re.getPosition().y && // wrist above elbow
+                        re.getPosition().y > rs.getPosition().y    // elbow below shoulder
+        );
+
+        // --- Phase 1: right wrist to the RIGHT of right elbow ---
+        if (!shutOffEnginePose1Done &&
+                leftArmDown &&
+                rightArmUp &&
+                rw.getPosition().x > re.getPosition().x) { // wrist further right than elbow
+
+            shutOffEnginePose1Done = true;
+            shutOffEngineStartTime = now;
+        }
+
+        // --- Phase 2: right wrist to the LEFT of right elbow ---
+        if (shutOffEnginePose1Done &&
+                !shutOffEnginePose2Done &&
+                (now - shutOffEngineStartTime <= 3000) &&
+                leftArmDown &&
+                rightArmUp &&
+                rw.getPosition().x < re.getPosition().x) { // wrist further left than elbow
+
+            shutOffEnginePose2Done = true;
+        }
+
+        return shutOffEnginePose1Done && shutOffEnginePose2Done;
+    }
+
+    private boolean detectPassControl(
+            PoseLandmark ls, PoseLandmark le, PoseLandmark lw, // left shoulder, elbow, wrist
+            PoseLandmark rs, PoseLandmark re, PoseLandmark rw  // right shoulder, elbow, wrist
+    ) {
+        boolean leftArmRightAngle = (
+                ls.getPosition().x < le.getPosition().x && // shoulder X < elbow X
+                        le.getPosition().x < lw.getPosition().x    // elbow X < wrist X
+        );
+
+        // --- RIGHT ARM: raised up & elbow below shoulder ---
+        boolean rightArmUp = (
+                rw.getPosition().y < re.getPosition().y && // wrist above elbow
+                        re.getPosition().y > rs.getPosition().y &&    // elbow below shoulder
+                        rw.getPosition().x < re.getPosition().x
+        );
+
+        // For static pose detection, both must be true simultaneously
+        return leftArmRightAngle && rightArmUp;
+    }
+
+    // Tracking phases for Engine on Fire
+    private boolean engineOnFirePose1Done = false;
+    private boolean engineOnFirePose2Done = false;
+    private boolean engineOnFirePose3Done = false;
+    private boolean engineOnFirePose4Done = false;
+
+    private boolean detectEngineOnFire(
+            PoseLandmark lw, PoseLandmark le, PoseLandmark ls, // left wrist, elbow, shoulder
+            PoseLandmark rw, PoseLandmark re, PoseLandmark rs  // right wrist, elbow, shoulder
+    ) {
+
+        // --- LEFT ARM: static angled position ---
+        boolean leftArmStatic = (
+                le.getPosition().x > ls.getPosition().x && // elbow is left of shoulder
+                        lw.getPosition().y < le.getPosition().y && // wrist above elbow
+                        le.getPosition().y < ls.getPosition().y && // elbow above shoulder
+                        lw.getPosition().x > le.getPosition().x    // wrist right of elbow
+        );
+
+        // --- RIGHT ARM: up position ---
+        boolean rightArmUp = (
+                rw.getPosition().y < re.getPosition().y && // wrist above elbow
+                        re.getPosition().y > rs.getPosition().y && // elbow below shoulder
+                        rw.getPosition().x < re.getPosition().x    // wrist left of elbow (X-axis)
+        );
+
+        // --- RIGHT ARM: down position ---
+        boolean rightArmDown = (
+                rw.getPosition().y > re.getPosition().y && // wrist below elbow
+                        re.getPosition().y > rs.getPosition().y && // elbow below shoulder
+                        rw.getPosition().x < re.getPosition().x    // wrist left of elbow (X-axis)
+        );
+
+        // Frame 1: Left arm static + Right arm up
+        if (!engineOnFirePose1Done &&
+                leftArmStatic &&
+                rightArmUp) {
+            engineOnFirePose1Done = true;
+        }
+
+        // Frame 2: Left arm static + Right arm down
+        if (engineOnFirePose1Done &&
+                !engineOnFirePose2Done &&
+                leftArmStatic &&
+                rightArmDown) {
+            engineOnFirePose2Done = true;
+        }
+
+        // Frame 3: Left arm static + Right arm up again
+        if (engineOnFirePose2Done &&
+                !engineOnFirePose3Done &&
+                leftArmStatic &&
+                rightArmUp) {
+            engineOnFirePose3Done = true;
+        }
+
+        // Frame 4: Left arm static + Right arm down again
+        if (engineOnFirePose3Done &&
+                !engineOnFirePose4Done &&
+                leftArmStatic &&
+                rightArmDown) {
+            engineOnFirePose4Done = true;
+        }
+
+        // Return true only when all 4 fanning phases are complete
+        return engineOnFirePose1Done &&
+                engineOnFirePose2Done &&
+                engineOnFirePose3Done &&
+                engineOnFirePose4Done;
+    }
+
+    // Tracking phases for Brakes on Fire
+    private boolean brakesOnFirePose1Done = false;
+    private boolean brakesOnFirePose2Done = false;
+    private boolean brakesOnFirePose3Done = false;
+    private boolean brakesOnFirePose4Done = false;
+
+    private boolean detectBrakesOnFire(
+            PoseLandmark lw, PoseLandmark le, PoseLandmark ls, // left wrist, elbow, shoulder
+            PoseLandmark rw, PoseLandmark re, PoseLandmark rs  // right wrist, elbow, shoulder
+    ) {
+
+        // --- LEFT ARM: down & diagonal ---
+        boolean leftArmDown = (
+                lw.getPosition().y > le.getPosition().y && // wrist lower than elbow
+                        le.getPosition().y > ls.getPosition().y    // elbow lower than shoulder
+        );
+
+        boolean leftArmDiagonal = (
+                lw.getPosition().x > le.getPosition().x && // wrist further Right than elbow
+                        le.getPosition().x > ls.getPosition().x    // elbow further Right than shoulder
+        );
+
+        // --- RIGHT ARM: up position ---
+        boolean rightArmUp = (
+                rw.getPosition().y < re.getPosition().y && // wrist above elbow
+                        re.getPosition().y > rs.getPosition().y && // elbow below shoulder
+                        rw.getPosition().x < re.getPosition().x    // wrist left of elbow (X-axis)
+        );
+
+        // --- RIGHT ARM: down position ---
+        boolean rightArmDown = (
+                rw.getPosition().y > re.getPosition().y && // wrist below elbow
+                        re.getPosition().y > rs.getPosition().y && // elbow below shoulder
+                        rw.getPosition().x < re.getPosition().x    // wrist left of elbow (X-axis)
+        );
+
+        // Frame 1: Left arm down+diagonal + Right arm up
+        if (!brakesOnFirePose1Done &&
+                leftArmDown && leftArmDiagonal &&
+                rightArmUp) {
+            brakesOnFirePose1Done = true;
+        }
+
+        // Frame 2: Left arm down+diagonal + Right arm down
+        if (brakesOnFirePose1Done &&
+                !brakesOnFirePose2Done &&
+                leftArmDown && leftArmDiagonal &&
+                rightArmDown) {
+            brakesOnFirePose2Done = true;
+        }
+
+        // Frame 3: Left arm down+diagonal + Right arm up again
+        if (brakesOnFirePose2Done &&
+                !brakesOnFirePose3Done &&
+                leftArmDown && leftArmDiagonal &&
+                rightArmUp) {
+            brakesOnFirePose3Done = true;
+        }
+
+        // Frame 4: Left arm down+diagonal + Right arm down again
+        if (brakesOnFirePose3Done &&
+                !brakesOnFirePose4Done &&
+                leftArmDown && leftArmDiagonal &&
+                rightArmDown) {
+            brakesOnFirePose4Done = true;
+        }
+
+        // Return true only when all 4 phases are complete
+        return brakesOnFirePose1Done &&
+                brakesOnFirePose2Done &&
+                brakesOnFirePose3Done &&
+                brakesOnFirePose4Done;
+    }
+
+
+
+
+
     private void resetGestureTracking() {
-        waveStep1Done = waveStep2Done = false;
-        leftWaveStep1Done = leftWaveStep2Done = false;
         startEnginePose1Done = false;
         startEnginePose2Done = false;
         startEngineStartTime = 0;
+        normalStopPose1Done = false;
+        normalStopPose2Done = false;
+        emergencyStopPose1Done = false;
+        emergencyStopPose2Done = false;
+        emergencyStopPose3Done = false;
+        emergencyStopPose4Done = false;
+        turnRightPose1Done = false;
+        turnRightPose2Done = false;
+        turnRightPose3Done = false;
+        turnRightPose4Done = false;
+        turnRightStartTime = 0;
+        slowDownPose1Done = false;
+        slowDownPose2Done = false;
+        slowDownStartTime = 0;
+        shutOffEnginePose1Done = false;
+        shutOffEnginePose2Done = false;
+        shutOffEngineStartTime = 0;
+        engineOnFirePose1Done = false;
+        engineOnFirePose2Done = false;
+        engineOnFirePose3Done = false;
+        engineOnFirePose4Done = false;
+        brakesOnFirePose1Done = false;
+        brakesOnFirePose2Done = false;
+        brakesOnFirePose3Done = false;
+        brakesOnFirePose4Done = false;
     }
 
 
