@@ -156,12 +156,12 @@
                     android:src="@drawable/s_turn_right"
                     android:contentDescription="Signal" />
                 <ImageView
-                    android:id="@+id/chocks"
+                    android:id="@+id/turn_left"
                     android:layout_width="187dp"
                     android:layout_height="100dp"
                     android:scaleType="fitCenter"
                     android:background="@drawable/image_container_bg"
-                    android:src="@drawable/s_chocks"
+                    android:src="@drawable/s_turn_left"
                     android:contentDescription="Signal" />
                 <ImageView
                     android:id="@+id/slow_down"

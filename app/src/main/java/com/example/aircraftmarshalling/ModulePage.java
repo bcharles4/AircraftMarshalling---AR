@@ -165,7 +165,7 @@ public class ModulePage extends AppCompatActivity {
 
             // Pass data to the intent
             intent.putExtra("title", "Turn Right Signal");
-            intent.putExtra("description", "This signal tells the pilot to steer the aircraft’s nose to the right. It is used during taxiing or parking. The marshaller raises their left arm and moves their right hand in a circular motion in the direction of the turn.");
+            intent.putExtra("description", "This signal tells the pilot to steer the aircraft’s nose to the right. It is used during taxiing or parking. The marshaller raises their left arm and swings their right hand from left to right in the direction of the turn.");
             intent.putExtra("imageResId", R.drawable.s_turn_right);
 
 
@@ -173,15 +173,30 @@ public class ModulePage extends AppCompatActivity {
             startActivity(intent);
         });
 
-        ImageView chocks = findViewById(R.id.chocks);
-        chocks.setOnClickListener(v -> {
+//        ImageView chocks = findViewById(R.id.chocks);
+//        chocks.setOnClickListener(v -> {
+//            // Create an intent to launch the CuisineViewer
+//            Intent intent = new Intent(ModulePage.this, ModuleViewer.class);
+//
+//            // Pass data to the intent
+//            intent.putExtra("title", "Chocks are Installed Signal");
+//            intent.putExtra("description", "This signal informs the pilot that wheel chocks have been placed and the aircraft is secure. It is safe to shut down engines or begin unloading. The marshaller mimics the placement of chocks by holding fists together in front of the body." );
+//            intent.putExtra("imageResId", R.drawable.s_chocks);
+//
+//
+//            // Start the activity
+//            startActivity(intent);
+//        });
+
+        ImageView turn_left = findViewById(R.id.turn_left);
+        turn_left.setOnClickListener(v -> {
             // Create an intent to launch the CuisineViewer
             Intent intent = new Intent(ModulePage.this, ModuleViewer.class);
 
             // Pass data to the intent
-            intent.putExtra("title", "Chocks are Installed Signal");
-            intent.putExtra("description", "This signal informs the pilot that wheel chocks have been placed and the aircraft is secure. It is safe to shut down engines or begin unloading. The marshaller mimics the placement of chocks by holding fists together in front of the body." );
-            intent.putExtra("imageResId", R.drawable.s_chocks);
+            intent.putExtra("title", "Turn Left Signal");
+            intent.putExtra("description", "This signal tells the pilot to steer the aircraft’s nose to the left. It is used during taxiing or parking. The marshaller raises their right arm and swings their left hand from left to right in the direction of the turn.");
+            intent.putExtra("imageResId", R.drawable.s_turn_left);
 
 
             // Start the activity
