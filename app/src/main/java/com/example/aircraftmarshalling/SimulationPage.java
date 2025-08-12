@@ -37,6 +37,10 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 
+import android.animation.ObjectAnimator;
+import android.widget.ImageView;
+
+
 public class SimulationPage extends AppCompatActivity {
 
     private static final int REQUEST_CAMERA_PERMISSION = 1001;
@@ -45,6 +49,8 @@ public class SimulationPage extends AppCompatActivity {
     private PoseOverlayView poseOverlayView;
     private TextView poseStatusText;
     private PoseDetector poseDetector;
+
+    ImageView movableImage;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -59,6 +65,7 @@ public class SimulationPage extends AppCompatActivity {
         BottomNavigationView bottomNavigationView = findViewById(R.id.bottom_navigation);
 
         runwayContainer.setVisibility(View.GONE);
+        movableImage = findViewById(R.id.movableImage);
 
         AccuratePoseDetectorOptions options =
                 new AccuratePoseDetectorOptions.Builder()
@@ -214,9 +221,11 @@ public class SimulationPage extends AppCompatActivity {
             }
             else if (turnRight) {
                 lastDetectionResult = "Turn Right";
+                rotateAirplane(movableImage.getRotation() + 25f); // turn 10° right
             }
             else if (turnLeft) {
                 lastDetectionResult = "Turn Left";
+                rotateAirplane(movableImage.getRotation() - 25f); // turn 10° left
             }
             else if (engineFire) {
                 lastDetectionResult = "Engine on Fire";
@@ -955,6 +964,11 @@ public class SimulationPage extends AppCompatActivity {
         turnLeftPose3Done = false;
         turnLeftPose4Done = false;
         turnLeftStartTime = 0;
+
+        // ✅ Reset airplane rotation
+        if (movableImage != null) {
+            rotateAirplane(0f); // rotate back to default position
+        }
     }
 
 
@@ -984,6 +998,19 @@ public class SimulationPage extends AppCompatActivity {
         float dy = y2 - y1;
         return (float) Math.sqrt(dx * dx + dy * dy);
     }
+
+    private void rotateAirplane(float toDegrees) {
+        ObjectAnimator rotateAnimator = ObjectAnimator.ofFloat(
+                movableImage,
+                "rotation",
+                movableImage.getRotation(),
+                toDegrees
+        );
+        rotateAnimator.setDuration(2500); // in milliseconds
+        rotateAnimator.start();
+    }
+
+
 
     private PointF mapPoint(PoseLandmark landmark, int imageWidth, int imageHeight, int viewWidth, int viewHeight) {
         float x = landmark.getPosition().x * ((float) viewWidth / imageWidth);
