@@ -192,12 +192,14 @@ public class SimulationPage extends AppCompatActivity {
         boolean emergencyStop = detectEmergencyStop(leftWrist, leftElbow, leftShoulder, rightWrist, rightElbow, rightShoulder); // ✅ New detector
         boolean holdPosition = detectHoldPosition(leftShoulder, leftElbow,leftWrist, rightShoulder,rightElbow,rightWrist);
         boolean turnRight = detectTurnRight(leftWrist, leftElbow, leftShoulder, rightWrist, rightElbow, rightShoulder);
-        boolean chalkInstalled = detectChalkInstalled(leftShoulder, leftElbow, leftWrist, rightShoulder, rightElbow, rightWrist);
+//        boolean chalkInstalled = detectChalkInstalled(leftShoulder, leftElbow, leftWrist, rightShoulder, rightElbow, rightWrist);
         boolean slowDown = detectSlowDown(leftShoulder, leftElbow, leftWrist, rightShoulder, rightElbow, rightWrist);
         boolean shutOffEngine = detectShutOffEngine(leftShoulder, leftElbow, leftWrist, rightShoulder, rightElbow, rightWrist);
         boolean passControl = detectPassControl(leftShoulder, leftElbow, leftWrist, rightShoulder, rightElbow, rightWrist);
         boolean engineFire = detectEngineOnFire(leftWrist, leftElbow, leftShoulder, rightWrist, rightElbow, rightShoulder);
         boolean brakeFire = detectBrakesOnFire(leftWrist, leftElbow, leftShoulder, rightWrist, rightElbow, rightShoulder);
+        boolean turnLeft = detectTurnLeft(leftWrist, leftElbow, leftShoulder, rightWrist, rightElbow, rightShoulder);
+
 
         // End of 5-second detection
         if (elapsed >= 4) {
@@ -212,6 +214,9 @@ public class SimulationPage extends AppCompatActivity {
             }
             else if (turnRight) {
                 lastDetectionResult = "Turn Right";
+            }
+            else if (turnLeft) {
+                lastDetectionResult = "Turn Left";
             }
             else if (engineFire) {
                 lastDetectionResult = "Engine on Fire";
@@ -231,9 +236,9 @@ public class SimulationPage extends AppCompatActivity {
             else if (negativeSignal) {
                 lastDetectionResult = "Negative";
             }
-            else if (chalkInstalled) {
-                lastDetectionResult = "Chalk Installed";
-            }
+//            else if (chalkInstalled) {
+//                lastDetectionResult = "Chalk Installed";
+//            }
             else if (holdPosition) {
                 lastDetectionResult = "Hold Position";
             } else {
@@ -532,31 +537,31 @@ public class SimulationPage extends AppCompatActivity {
     }
 
 
-    private boolean detectChalkInstalled(
-            PoseLandmark ls, PoseLandmark le, PoseLandmark lw, // left shoulder, elbow, wrist
-            PoseLandmark rs, PoseLandmark re, PoseLandmark rw  // right shoulder, elbow, wrist
-    ) {
-        // --- Left Arm Up ---
-        boolean leftArmUp = (
-                lw.getPosition().y < le.getPosition().y && // wrist above elbow
-                        le.getPosition().y < ls.getPosition().y    // elbow above shoulder
-        );
-
-        // --- Right Arm Up ---
-        boolean rightArmUp = (
-                rw.getPosition().y < re.getPosition().y && // wrist above elbow
-                        re.getPosition().y < rs.getPosition().y    // elbow above shoulder
-        );
-
-        // --- Additional X-axis rules ---
-        boolean xPositionCheck = (
-                rw.getPosition().x < re.getPosition().x && // right wrist left of right elbow
-                        lw.getPosition().x > le.getPosition().x    // left wrist right of left elbow
-        );
-
-        // --- Static pose detection ---
-        return leftArmUp && rightArmUp && xPositionCheck;
-    }
+//    private boolean detectChalkInstalled(
+//            PoseLandmark ls, PoseLandmark le, PoseLandmark lw, // left shoulder, elbow, wrist
+//            PoseLandmark rs, PoseLandmark re, PoseLandmark rw  // right shoulder, elbow, wrist
+//    ) {
+//        // --- Left Arm Up ---
+//        boolean leftArmUp = (
+//                lw.getPosition().y < le.getPosition().y && // wrist above elbow
+//                        le.getPosition().y < ls.getPosition().y    // elbow above shoulder
+//        );
+//
+//        // --- Right Arm Up ---
+//        boolean rightArmUp = (
+//                rw.getPosition().y < re.getPosition().y && // wrist above elbow
+//                        re.getPosition().y < rs.getPosition().y    // elbow above shoulder
+//        );
+//
+//        // --- Additional X-axis rules ---
+//        boolean xPositionCheck = (
+//                rw.getPosition().x < re.getPosition().x && // right wrist left of right elbow
+//                        lw.getPosition().x > le.getPosition().x    // left wrist right of left elbow
+//        );
+//
+//        // --- Static pose detection ---
+//        return leftArmUp && rightArmUp && xPositionCheck;
+//    }
 
     // Tracking phases for Slow Down
     private boolean slowDownPose1Done = false;
@@ -833,6 +838,77 @@ public class SimulationPage extends AppCompatActivity {
                 brakesOnFirePose4Done;
     }
 
+    // Tracking phases for Turn Left with continuous waving
+    private boolean turnLeftPose1Done = false;
+    private boolean turnLeftPose2Done = false;
+    private boolean turnLeftPose3Done = false;
+    private boolean turnLeftPose4Done = false;
+    private long turnLeftStartTime = 0;
+
+    private boolean detectTurnLeft(
+            PoseLandmark lw, PoseLandmark le, PoseLandmark ls, // left wrist, elbow, shoulder
+            PoseLandmark rw, PoseLandmark re, PoseLandmark rs  // right wrist, elbow, shoulder
+    ) {
+        long now = System.currentTimeMillis();
+
+        // --- RIGHT ARM: static at right angle (shoulder X < elbow X < wrist X) ---
+        boolean rightArmRightAngle = (
+                rs.getPosition().x > re.getPosition().x && // shoulder X > elbow X
+                        re.getPosition().x > rw.getPosition().x    // elbow X > wrist X
+        );
+
+        // --- LEFT ARM: raised up ---
+        boolean leftArmUp = (
+                lw.getPosition().y < le.getPosition().y    // wrist above elbow
+        );
+
+        // --- Frame 1: wrist RIGHT of elbow ---
+        if (!turnLeftPose1Done &&
+                rightArmRightAngle &&
+                leftArmUp &&
+                lw.getPosition().x > le.getPosition().x) { // wrist right of elbow
+
+            turnLeftPose1Done = true;
+            turnLeftStartTime = now;
+        }
+
+        // --- Frame 2: wrist LEFT of elbow ---
+        if (turnLeftPose1Done &&
+                !turnLeftPose2Done &&
+                (now - turnLeftStartTime <= 3000) &&
+                rightArmRightAngle &&
+                leftArmUp &&
+                lw.getPosition().x < le.getPosition().x) { // wrist left of elbow
+
+            turnLeftPose2Done = true;
+        }
+
+        // --- Frame 3: wrist RIGHT of elbow ---
+        if (turnLeftPose2Done &&
+                !turnLeftPose3Done &&
+                (now - turnLeftStartTime <= 3000) &&
+                rightArmRightAngle &&
+                leftArmUp &&
+                lw.getPosition().x > le.getPosition().x) { // wrist right of elbow
+
+            turnLeftPose3Done = true;
+        }
+
+        // --- Frame 4: wrist LEFT of elbow ---
+        if (turnLeftPose3Done &&
+                !turnLeftPose4Done &&
+                (now - turnLeftStartTime <= 3000) &&
+                rightArmRightAngle &&
+                leftArmUp &&
+                lw.getPosition().x < le.getPosition().x) { // wrist left of elbow
+
+            turnLeftPose4Done = true;
+        }
+
+        return turnLeftPose1Done && turnLeftPose2Done && turnLeftPose3Done && turnLeftPose4Done;
+    }
+
+
 
 
 
@@ -841,31 +917,44 @@ public class SimulationPage extends AppCompatActivity {
         startEnginePose1Done = false;
         startEnginePose2Done = false;
         startEngineStartTime = 0;
+
         normalStopPose1Done = false;
         normalStopPose2Done = false;
+
         emergencyStopPose1Done = false;
         emergencyStopPose2Done = false;
         emergencyStopPose3Done = false;
         emergencyStopPose4Done = false;
+
         turnRightPose1Done = false;
         turnRightPose2Done = false;
         turnRightPose3Done = false;
         turnRightPose4Done = false;
         turnRightStartTime = 0;
+
         slowDownPose1Done = false;
         slowDownPose2Done = false;
         slowDownStartTime = 0;
+
         shutOffEnginePose1Done = false;
         shutOffEnginePose2Done = false;
         shutOffEngineStartTime = 0;
+
         engineOnFirePose1Done = false;
         engineOnFirePose2Done = false;
         engineOnFirePose3Done = false;
         engineOnFirePose4Done = false;
+
         brakesOnFirePose1Done = false;
         brakesOnFirePose2Done = false;
         brakesOnFirePose3Done = false;
         brakesOnFirePose4Done = false;
+
+        turnLeftPose1Done = false;
+        turnLeftPose2Done = false;
+        turnLeftPose3Done = false;
+        turnLeftPose4Done = false;
+        turnLeftStartTime = 0;
     }
 
 
