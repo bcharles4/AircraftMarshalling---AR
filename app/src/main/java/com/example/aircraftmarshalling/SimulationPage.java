@@ -221,11 +221,9 @@ public class SimulationPage extends AppCompatActivity {
             }
             else if (turnRight) {
                 lastDetectionResult = "Turn Right";
-                rotateAirplane(movableImage.getRotation() + 25f); // turn 10° right
             }
             else if (turnLeft) {
                 lastDetectionResult = "Turn Left";
-                rotateAirplane(movableImage.getRotation() - 25f); // turn 10° left
             }
             else if (engineFire) {
                 lastDetectionResult = "Engine on Fire";
