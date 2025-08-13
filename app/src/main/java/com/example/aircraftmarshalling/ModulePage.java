@@ -55,7 +55,9 @@ public class ModulePage extends AppCompatActivity {
             intent.putExtra("title", "Negative/No Signal");
             intent.putExtra("description", "This is a refusal or denial signal given by the marshaller. It clearly tells the pilot not to proceed with the requested or expected action. Usually, it involves shaking the head and extending both arms outward with palms facing down or waving them side to side.");
             intent.putExtra("imageResId", R.drawable.s_negative_no_signal);
-            intent.putExtra("videoResId", R.raw.sample_vid);
+            intent.putExtra("videoResId", R.raw.negative);
+
+
 
 
 
@@ -73,6 +75,8 @@ public class ModulePage extends AppCompatActivity {
             intent.putExtra("title", "Normal Stop Signal");
             intent.putExtra("description", "This signal directs the pilot to bring the aircraft to a safe and controlled stop. It is used during normal parking operations or when taxiing needs to be paused. The marshaller raises both arms above the head and brings them down simultaneously to chest level.");
             intent.putExtra("imageResId", R.drawable.s_normal_stop);
+            intent.putExtra("videoResId", R.raw.normal_stop);
+
 
 
             // Start the activity
@@ -89,6 +93,7 @@ public class ModulePage extends AppCompatActivity {
             intent.putExtra("title", "Emergency Stop Signal");
             intent.putExtra("description", "This urgent signal tells the pilot to stop the aircraft immediately due to danger. It is used in situations involving personnel, equipment, or environmental threats. The marshaller makes exaggerated downward chopping motions with both arms repeatedly." );
             intent.putExtra("imageResId", R.drawable.s_emergency_stop);
+            intent.putExtra("videoResId", R.raw.emergency_stop);
 
 
             // Start the activity
@@ -104,6 +109,8 @@ public class ModulePage extends AppCompatActivity {
             intent.putExtra("title", "Hold Position");
             intent.putExtra("description", "This signal instructs the pilot to stay in the current position and wait for further instructions. It is commonly used during aircraft ground movement coordination. The marshaller holds up one hand with the palm facing the aircraft.");
             intent.putExtra("imageResId", R.drawable.s_hold_position);
+            intent.putExtra("videoResId", R.raw.hold_position);
+
 
 
             // Start the activity
@@ -120,6 +127,8 @@ public class ModulePage extends AppCompatActivity {
             intent.putExtra("title", "Pass Control");
             intent.putExtra("description", "This gesture is used to hand over marshalling responsibilities to another ground crew member. It ensures coordinated control and safe movement as aircraft transitions from one marshaller to another. Typically, the current marshaller points to the next marshaller and then steps aside.");
             intent.putExtra("imageResId", R.drawable.s_pass_control);
+            intent.putExtra("videoResId", R.raw.pass_control);
+
 
 
             // Start the activity
@@ -136,6 +145,8 @@ public class ModulePage extends AppCompatActivity {
             intent.putExtra("title", "Engine on Fire Signal");
             intent.putExtra("description", "This emergency signal warns the pilot that an engine is on fire. It requires immediate shutdown and activation of fire suppression systems. The marshaller points at the engine and mimics flames by waving the hand upward in a fanning motion.");
             intent.putExtra("imageResId", R.drawable.s_engine_on_fire);
+            intent.putExtra("videoResId", R.raw.engine_on_fire);
+
 
 
             // Start the activity
@@ -151,6 +162,7 @@ public class ModulePage extends AppCompatActivity {
             intent.putExtra("title", "Brakes on Fire Signal");
             intent.putExtra("description", "This signal notifies the pilot that the aircraft’s brake system is overheating or on fire. Immediate action must be taken to prevent a fire spread or brake failure. The marshaller points at the wheel area and mimics fire using a rapid fanning motion.");
             intent.putExtra("imageResId", R.drawable.s_brakes_on_fire);
+            intent.putExtra("videoResId", R.raw.brakes_on_fire);
 
 
             // Start the activity
@@ -167,6 +179,8 @@ public class ModulePage extends AppCompatActivity {
             intent.putExtra("title", "Turn Right Signal");
             intent.putExtra("description", "This signal tells the pilot to steer the aircraft’s nose to the right. It is used during taxiing or parking. The marshaller raises their left arm and swings their right hand from left to right in the direction of the turn.");
             intent.putExtra("imageResId", R.drawable.s_turn_right);
+            intent.putExtra("videoResId", R.raw.turn_right);
+
 
 
             // Start the activity
@@ -197,6 +211,8 @@ public class ModulePage extends AppCompatActivity {
             intent.putExtra("title", "Turn Left Signal");
             intent.putExtra("description", "This signal tells the pilot to steer the aircraft’s nose to the left. It is used during taxiing or parking. The marshaller raises their right arm and swings their left hand from left to right in the direction of the turn.");
             intent.putExtra("imageResId", R.drawable.s_turn_left);
+            intent.putExtra("videoResId", R.raw.turn_left);
+
 
 
             // Start the activity
@@ -213,6 +229,7 @@ public class ModulePage extends AppCompatActivity {
             intent.putExtra("title", "Slow Down Signal");
             intent.putExtra("description", "This signal is used to reduce the aircraft’s taxi speed. It is usually given when approaching tight spaces, equipment, or personnel. The marshaller lowers both arms slowly in a downward sweeping motion.");
             intent.putExtra("imageResId", R.drawable.s_slow_down);
+            intent.putExtra("videoResId", R.raw.slow_down);
 
 
             // Start the activity
@@ -229,6 +246,8 @@ public class ModulePage extends AppCompatActivity {
             intent.putExtra("title", "Shut Off Engine Signal");
             intent.putExtra("description", "This signal instructs the pilot to shut down the engines. It is given once the aircraft is parked and chocked, or during an emergency. The marshaller makes a slashing motion across the throat with one hand.");
             intent.putExtra("imageResId", R.drawable.s_shutoff_engine);
+            intent.putExtra("videoResId", R.raw.shutoff_engine);
+
 
 
             // Start the activity

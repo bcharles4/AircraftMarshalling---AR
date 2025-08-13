@@ -34,7 +34,7 @@
     <androidx.cardview.widget.CardView
         android:id="@+id/category_container"
         android:layout_width="390dp"
-        android:layout_height="500dp"
+        android:layout_height="700dp"
         android:layout_margin="20dp"
         app:cardCornerRadius="15dp"
         app:cardElevation="8dp"

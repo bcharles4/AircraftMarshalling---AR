@@ -14,10 +14,14 @@ import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
+import com.google.android.material.bottomnavigation.BottomNavigationView;
+
 public class VideoViewer extends AppCompatActivity {
 
     private VideoView videoView;
     private Button btnPlay, btnStop;
+    private String name, email, phone;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -76,5 +80,40 @@ public class VideoViewer extends AppCompatActivity {
                 videoTitle.setText("Video not available");
             }
         }
+
+
+        Intent intent2 = getIntent();
+        name = intent2.getStringExtra("name");
+        email = intent2.getStringExtra("email");
+        phone = intent2.getStringExtra("phone");
+
+        BottomNavigationView bottomNavigationView = findViewById(R.id.bottom_navigation);
+        bottomNavigationView.setSelectedItemId(R.id.nav_module);
+
+        bottomNavigationView.setOnItemSelectedListener(item -> {
+            int itemId = item.getItemId();
+
+            if (itemId == R.id.nav_simulation) {
+                Intent simulationtIntent = new Intent(VideoViewer.this, SimulationPage.class);
+                simulationtIntent.putExtra("name", name);
+                simulationtIntent.putExtra("email", email);
+                simulationtIntent.putExtra("phone", phone);
+                startActivity(simulationtIntent);
+            } else if (itemId == R.id.nav_assessment) {
+                Intent intent1 = new Intent(VideoViewer.this, AssessmentPage.class);
+                intent1.putExtra("name", getIntent().getStringExtra("name")); // or pass stored variable
+                intent1.putExtra("email", getIntent().getStringExtra("email"));
+                intent1.putExtra("phone", getIntent().getStringExtra("phone"));
+                startActivity(intent1);
+
+            } else {
+                return false; // No action for other items
+            }
+
+//            intent.putExtra("user_email", userEmail);
+//            startActivity(intent);
+//            overridePendingTransition(0, 0);
+            return true;
+        });
     }
 }
