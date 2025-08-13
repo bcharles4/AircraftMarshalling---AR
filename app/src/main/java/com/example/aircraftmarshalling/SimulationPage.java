@@ -117,24 +117,46 @@ public class SimulationPage extends AppCompatActivity {
         cameraProviderFuture.addListener(() -> {
             try {
                 ProcessCameraProvider cameraProvider = cameraProviderFuture.get();
-                Preview preview = new Preview.Builder().build();
-                CameraSelector cameraSelector = CameraSelector.DEFAULT_FRONT_CAMERA;
 
+                // Try to pick a usable camera
+                CameraSelector selector;
+
+                try {
+                    if (cameraProvider.hasCamera(CameraSelector.DEFAULT_BACK_CAMERA)) {
+                        selector = CameraSelector.DEFAULT_BACK_CAMERA;
+                    } else if (cameraProvider.hasCamera(CameraSelector.DEFAULT_FRONT_CAMERA)) {
+                        selector = CameraSelector.DEFAULT_FRONT_CAMERA;
+                    } else {
+                        Log.e("SimulationPage", "No available cameras on this device/emulator");
+                        return; // Don't bind anything, avoids crash
+                    }
+                } catch (Exception e) {
+                    Log.e("SimulationPage", "Error checking cameras", e);
+                    return;
+                }
+
+                Preview preview = new Preview.Builder().build();
                 ImageAnalysis imageAnalysis = new ImageAnalysis.Builder()
                         .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                         .build();
-
                 imageAnalysis.setAnalyzer(ContextCompat.getMainExecutor(this), this::processImageProxy);
                 preview.setSurfaceProvider(previewView.getSurfaceProvider());
 
                 cameraProvider.unbindAll();
-                cameraProvider.bindToLifecycle(this, cameraSelector, preview, imageAnalysis);
+
+                try {
+                    cameraProvider.bindToLifecycle(this, selector, preview, imageAnalysis);
+                } catch (IllegalArgumentException iae) {
+                    Log.e("SimulationPage", "No camera matched selector", iae);
+                }
 
             } catch (ExecutionException | InterruptedException e) {
                 Log.e("SimulationPage", "Camera start failed", e);
             }
         }, ContextCompat.getMainExecutor(this));
     }
+
+
 
     private void processImageProxy(ImageProxy imageProxy) {
         @androidx.annotation.OptIn(markerClass = androidx.camera.core.ExperimentalGetImage.class)
@@ -183,7 +205,7 @@ public class SimulationPage extends AppCompatActivity {
                 isCooldown = false;
                 isDetectingAction = false;
             }
-            updateSkeletonOverlay(imageWidth, imageHeight, leftWrist, rightWrist, leftElbow, rightElbow, leftShoulder, rightShoulder);
+//            updateSkeletonOverlay(imageWidth, imageHeight, leftWrist, rightWrist, leftElbow, rightElbow, leftShoulder, rightShoulder);
             return;
         }
 
@@ -273,7 +295,7 @@ public class SimulationPage extends AppCompatActivity {
 
 
         // Always update overlay
-        updateSkeletonOverlay(imageWidth, imageHeight, leftWrist, rightWrist, leftElbow, rightElbow, leftShoulder, rightShoulder);
+//        updateSkeletonOverlay(imageWidth, imageHeight, leftWrist, rightWrist, leftElbow, rightElbow, leftShoulder, rightShoulder);
     }
 
 
