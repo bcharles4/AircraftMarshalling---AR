@@ -3,6 +3,7 @@ package com.example.aircraftmarshalling;
 import android.content.Intent;
 import android.os.Bundle;
 import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
 import android.widget.Toast;
@@ -86,6 +87,23 @@ public class AssessmentPage extends AppCompatActivity {
                 checkAnswers();
             }
         });
+
+
+        ImageView logoutButton = findViewById(R.id.logout_button);
+        logoutButton.setOnClickListener(v -> {
+            new AlertDialog.Builder(AssessmentPage.this)
+                    .setTitle("Logout")
+                    .setMessage("Are you sure you want to logout?")
+                    .setPositiveButton("Yes", (dialog, which) -> {
+                        Intent intent = new Intent(AssessmentPage.this, LoginPage.class);
+                        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                        startActivity(intent);
+                        finish(); // Close current activity
+                    })
+                    .setNegativeButton("No", (dialog, which) -> dialog.dismiss())
+                    .show();
+        });
+
 
 
     }
