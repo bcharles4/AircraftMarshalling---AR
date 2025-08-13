@@ -122,8 +122,8 @@ public class SimulationPage extends AppCompatActivity {
                 CameraSelector selector;
 
                 try {
-                    if (cameraProvider.hasCamera(CameraSelector.DEFAULT_BACK_CAMERA)) {
-                        selector = CameraSelector.DEFAULT_BACK_CAMERA;
+                    if (cameraProvider.hasCamera(CameraSelector.DEFAULT_FRONT_CAMERA)) {
+                        selector = CameraSelector.DEFAULT_FRONT_CAMERA;
                     } else if (cameraProvider.hasCamera(CameraSelector.DEFAULT_FRONT_CAMERA)) {
                         selector = CameraSelector.DEFAULT_FRONT_CAMERA;
                     } else {
@@ -220,7 +220,7 @@ public class SimulationPage extends AppCompatActivity {
         long remainingDetection = 4 - elapsed;
 
         if (remainingDetection > 0) {
-            runOnUiThread(() -> poseStatusText.setText("Detecting Action (" + remainingDetection + ")"));
+            runOnUiThread(() -> poseStatusText.setText("Detecting Action...."));
         }
 
         // Run all detectors
