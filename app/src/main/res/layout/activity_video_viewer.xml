@@ -77,7 +77,8 @@
                 android:id="@+id/video_view"
                 android:layout_marginTop="20dp"
                 android:layout_width="match_parent"
-                android:layout_height="350dp"
+                android:layout_height="450dp"
+                android:layout_gravity="center"
                 android:background="@drawable/border" />
 
             <!-- Play & Stop Buttons -->
