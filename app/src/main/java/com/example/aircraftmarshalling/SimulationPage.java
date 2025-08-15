@@ -95,6 +95,7 @@ public class SimulationPage extends AppCompatActivity {
         startSimButton.setOnClickListener(v -> {
             startSimButton.setVisibility(View.GONE);
             runwayContainer.setVisibility(View.VISIBLE);
+            poseStatusText.setVisibility(View.VISIBLE);
         });
 
         bottomNavigationView.setSelectedItemId(R.id.nav_simulation);
