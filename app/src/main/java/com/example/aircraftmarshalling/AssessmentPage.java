@@ -17,9 +17,20 @@ import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
+import com.android.volley.Request;
+import com.android.volley.RequestQueue;
+import com.android.volley.Response;
+import com.android.volley.VolleyError;
+import com.android.volley.toolbox.StringRequest;
+import com.android.volley.toolbox.Volley;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
 public class AssessmentPage extends AppCompatActivity {
+    private String name, email, phone;
+
     RadioGroup[] questions = new RadioGroup[8];
     int[] correctAnswers = {
             0, // q1: "Start the engine"
@@ -41,6 +52,11 @@ public class AssessmentPage extends AppCompatActivity {
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
             return insets;
         });
+
+        Intent intent2 = getIntent();
+        name = intent2.getStringExtra("name");
+        email = intent2.getStringExtra("email");
+        phone = intent2.getStringExtra("phone");
 
         BottomNavigationView bottomNavigationView = findViewById(R.id.bottom_navigation);
         bottomNavigationView.setSelectedItemId(R.id.nav_assessment);
@@ -128,11 +144,43 @@ public class AssessmentPage extends AppCompatActivity {
             }
         }
 
-        // Show result
+        // Show result locally
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("Assessment Result")
                 .setMessage("You got " + score + " out of 8 correct.")
                 .setPositiveButton("OK", null)
                 .show();
+
+        // Send score to backend
+        updateUserScore(name,  score);
     }
+    private void updateUserScore(String name, int score) {
+        String url = "https://aircraft-marshalling-f350337809da.herokuapp.com/api/users/score/" + name;
+
+        RequestQueue queue = Volley.newRequestQueue(this);
+
+        StringRequest stringRequest = new StringRequest(Request.Method.PUT, url,
+                response -> Toast.makeText(AssessmentPage.this, "Assessment Score Updated Successfully!", Toast.LENGTH_SHORT).show(),
+                error -> Toast.makeText(AssessmentPage.this, "Error updating score: " + error.getMessage(), Toast.LENGTH_LONG).show()
+        ) {
+            @Override
+            public byte[] getBody() {
+                JSONObject body = new JSONObject();
+                try {
+                    body.put("score", score); // ✅ only send score
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+                return body.toString().getBytes();
+            }
+
+            @Override
+            public String getBodyContentType() {
+                return "application/json; charset=utf-8";
+            }
+        };
+
+        queue.add(stringRequest);
+    }
+
 }

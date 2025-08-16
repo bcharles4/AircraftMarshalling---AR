@@ -65,11 +65,6 @@ public class ModuleViewer extends AppCompatActivity {
         });
 
 
-        Intent intent2 = getIntent();
-        name = intent2.getStringExtra("name");
-        email = intent2.getStringExtra("email");
-        phone = intent2.getStringExtra("phone");
-
         BottomNavigationView bottomNavigationView = findViewById(R.id.bottom_navigation);
         bottomNavigationView.setSelectedItemId(R.id.nav_module);
 

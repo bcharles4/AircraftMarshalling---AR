@@ -49,7 +49,7 @@ import android.widget.ImageView;
 public class SimulationPage extends AppCompatActivity {
 
     private static final int REQUEST_CAMERA_PERMISSION = 1001;
-
+    private  String name, email, phone;
     private PreviewView previewView;
     private PoseOverlayView poseOverlayView;
     private TextView poseStatusText;
@@ -107,17 +107,34 @@ public class SimulationPage extends AppCompatActivity {
             flipButton.setVisibility(View.VISIBLE);
         });
 
+        Intent intent2 = getIntent();
+        name = intent2.getStringExtra("name");
+        email = intent2.getStringExtra("email");
+        phone = intent2.getStringExtra("phone");
+
         bottomNavigationView.setSelectedItemId(R.id.nav_simulation);
         bottomNavigationView.setOnItemSelectedListener(item -> {
             int itemId = item.getItemId();
-            if (itemId == R.id.nav_simulation) return true;
-            if (itemId == R.id.nav_module)
+
+            if (itemId == R.id.nav_simulation) {
+                return true;
+            } else if (itemId == R.id.nav_module) {
                 startActivity(new Intent(this, ModulePage.class));
-            else if (itemId == R.id.nav_assessment)
-                startActivity(new Intent(this, AssessmentPage.class));
-            overridePendingTransition(0, 0);
-            return true;
+                overridePendingTransition(0, 0);
+                return true;
+            } else if (itemId == R.id.nav_assessment) {
+                Intent intent1 = new Intent(SimulationPage.this, AssessmentPage.class);
+                intent1.putExtra("name", getIntent().getStringExtra("name"));
+                intent1.putExtra("email", getIntent().getStringExtra("email"));
+                intent1.putExtra("phone", getIntent().getStringExtra("phone"));
+                startActivity(intent1);
+                overridePendingTransition(0, 0);
+                return true;
+            }
+
+            return false;
         });
+
     }
 
     private void startCamera() {
