@@ -5,4 +5,5 @@
     <string name="left_hand_raised">🖐 Left Hand Raised</string>
     <string name="right_hand_raised">🖐 Right Hand Raised</string>
     <string name="unknown_pose">✋ Unknown Pose</string>
+    <string name="flip_desc">flip</string>
 </resources>

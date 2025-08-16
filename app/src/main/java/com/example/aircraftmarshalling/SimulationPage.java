@@ -10,6 +10,7 @@ import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.FrameLayout;
+import android.widget.ImageButton;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -53,6 +54,7 @@ public class SimulationPage extends AppCompatActivity {
     private PoseOverlayView poseOverlayView;
     private TextView poseStatusText;
     private PoseDetector poseDetector;
+    private boolean isUsingFrontCamera = false; // default = back camera
 
     ImageView movableImage;
 
@@ -72,6 +74,12 @@ public class SimulationPage extends AppCompatActivity {
         Button startSimButton = findViewById(R.id.startSim_button);
         FrameLayout runwayContainer = findViewById(R.id.runwayContainer);
         BottomNavigationView bottomNavigationView = findViewById(R.id.bottom_navigation);
+
+        ImageButton flipButton = findViewById(R.id.flipButton);
+        flipButton.setOnClickListener(v -> {
+            isUsingFrontCamera = !isUsingFrontCamera; // toggle
+            startCamera(); // restart with new selector
+        });
 
         runwayContainer.setVisibility(View.GONE);
         movableImage = findViewById(R.id.movableImage);
@@ -96,6 +104,7 @@ public class SimulationPage extends AppCompatActivity {
             startSimButton.setVisibility(View.GONE);
             runwayContainer.setVisibility(View.VISIBLE);
             poseStatusText.setVisibility(View.VISIBLE);
+            flipButton.setVisibility(View.VISIBLE);
         });
 
         bottomNavigationView.setSelectedItemId(R.id.nav_simulation);
@@ -119,44 +128,36 @@ public class SimulationPage extends AppCompatActivity {
             try {
                 ProcessCameraProvider cameraProvider = cameraProviderFuture.get();
 
-                // Try to pick a usable camera
+                cameraProvider.unbindAll();
+
                 CameraSelector selector;
 
-                try {
-                    if (cameraProvider.hasCamera(CameraSelector.DEFAULT_BACK_CAMERA)) {
-                        selector = CameraSelector.DEFAULT_BACK_CAMERA;
-                    } else if (cameraProvider.hasCamera(CameraSelector.DEFAULT_FRONT_CAMERA)) {
-                        selector = CameraSelector.DEFAULT_FRONT_CAMERA;
-                    } else {
-                        Log.e("SimulationPage", "No available cameras on this device/emulator");
-                        return;
-                    }
-                } catch (Exception e) {
-                    Log.e("SimulationPage", "Error checking cameras", e);
-                    return;
+                // ✅ Pick based on flag
+                if (isUsingFrontCamera) {
+                    selector = CameraSelector.DEFAULT_FRONT_CAMERA;
+                } else {
+                    selector = CameraSelector.DEFAULT_BACK_CAMERA;
                 }
-
 
                 Preview preview = new Preview.Builder().build();
                 ImageAnalysis imageAnalysis = new ImageAnalysis.Builder()
                         .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                         .build();
                 imageAnalysis.setAnalyzer(ContextCompat.getMainExecutor(this), this::processImageProxy);
+
                 preview.setSurfaceProvider(previewView.getSurfaceProvider());
 
-                cameraProvider.unbindAll();
-
-                try {
-                    cameraProvider.bindToLifecycle(this, selector, preview, imageAnalysis);
-                } catch (IllegalArgumentException iae) {
-                    Log.e("SimulationPage", "No camera matched selector", iae);
-                }
+                // Bind use cases
+                cameraProvider.bindToLifecycle(this, selector, preview, imageAnalysis);
 
             } catch (ExecutionException | InterruptedException e) {
                 Log.e("SimulationPage", "Camera start failed", e);
+            } catch (IllegalArgumentException iae) {
+                Log.e("SimulationPage", "No camera matched selector", iae);
             }
         }, ContextCompat.getMainExecutor(this));
     }
+
 
 
 
@@ -207,7 +208,7 @@ public class SimulationPage extends AppCompatActivity {
                 isCooldown = false;
                 isDetectingAction = false;
             }
-            updateSkeletonOverlay(imageWidth, imageHeight, leftWrist, rightWrist, leftElbow, rightElbow, leftShoulder, rightShoulder);
+//            updateSkeletonOverlay(imageWidth, imageHeight, leftWrist, rightWrist, leftElbow, rightElbow, leftShoulder, rightShoulder);
             return;
         }
 
@@ -297,7 +298,7 @@ public class SimulationPage extends AppCompatActivity {
 
 
         // Always update overlay
-        updateSkeletonOverlay(imageWidth, imageHeight, leftWrist, rightWrist, leftElbow, rightElbow, leftShoulder, rightShoulder);
+//        updateSkeletonOverlay(imageWidth, imageHeight, leftWrist, rightWrist, leftElbow, rightElbow, leftShoulder, rightShoulder);
     }
 
 
