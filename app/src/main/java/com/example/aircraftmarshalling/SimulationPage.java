@@ -123,18 +123,19 @@ public class SimulationPage extends AppCompatActivity {
                 CameraSelector selector;
 
                 try {
-                    if (cameraProvider.hasCamera(CameraSelector.DEFAULT_FRONT_CAMERA)) {
-                        selector = CameraSelector.DEFAULT_FRONT_CAMERA;
+                    if (cameraProvider.hasCamera(CameraSelector.DEFAULT_BACK_CAMERA)) {
+                        selector = CameraSelector.DEFAULT_BACK_CAMERA;
                     } else if (cameraProvider.hasCamera(CameraSelector.DEFAULT_FRONT_CAMERA)) {
                         selector = CameraSelector.DEFAULT_FRONT_CAMERA;
                     } else {
                         Log.e("SimulationPage", "No available cameras on this device/emulator");
-                        return; // Don't bind anything, avoids crash
+                        return;
                     }
                 } catch (Exception e) {
                     Log.e("SimulationPage", "Error checking cameras", e);
                     return;
                 }
+
 
                 Preview preview = new Preview.Builder().build();
                 ImageAnalysis imageAnalysis = new ImageAnalysis.Builder()
@@ -206,7 +207,7 @@ public class SimulationPage extends AppCompatActivity {
                 isCooldown = false;
                 isDetectingAction = false;
             }
-//            updateSkeletonOverlay(imageWidth, imageHeight, leftWrist, rightWrist, leftElbow, rightElbow, leftShoulder, rightShoulder);
+            updateSkeletonOverlay(imageWidth, imageHeight, leftWrist, rightWrist, leftElbow, rightElbow, leftShoulder, rightShoulder);
             return;
         }
 
@@ -234,7 +235,7 @@ public class SimulationPage extends AppCompatActivity {
 //        boolean chalkInstalled = detectChalkInstalled(leftShoulder, leftElbow, leftWrist, rightShoulder, rightElbow, rightWrist);
         boolean slowDown = detectSlowDown(leftShoulder, leftElbow, leftWrist, rightShoulder, rightElbow, rightWrist);
         boolean shutOffEngine = detectShutOffEngine(leftShoulder, leftElbow, leftWrist, rightShoulder, rightElbow, rightWrist);
-        boolean passControl = detectPassControl(leftShoulder, leftElbow, leftWrist, rightShoulder, rightElbow, rightWrist);
+        boolean passControl = detectPassControl(leftWrist, leftElbow, leftShoulder, rightWrist, rightElbow, rightShoulder);
         boolean engineFire = detectEngineOnFire(leftWrist, leftElbow, leftShoulder, rightWrist, rightElbow, rightShoulder);
         boolean brakeFire = detectBrakesOnFire(leftWrist, leftElbow, leftShoulder, rightWrist, rightElbow, rightShoulder);
         boolean turnLeft = detectTurnLeft(leftWrist, leftElbow, leftShoulder, rightWrist, rightElbow, rightShoulder);
@@ -247,6 +248,9 @@ public class SimulationPage extends AppCompatActivity {
             }
             else if (emergencyStop) { // ✅ Added
                 lastDetectionResult = "Emergency Stop";
+            }
+            else if (passControl) {
+                lastDetectionResult = "Pass Control";
             }
             else if (startEngine) {
                 lastDetectionResult = "Start Engine";
@@ -271,9 +275,6 @@ public class SimulationPage extends AppCompatActivity {
             else if (shutOffEngine) {
                 lastDetectionResult = "Shut Off Engine";
             }
-            else if (passControl) {
-                lastDetectionResult = "Pass Control";
-            }
             else if (negativeSignal) {
                 lastDetectionResult = "Negative";
             }
@@ -296,7 +297,7 @@ public class SimulationPage extends AppCompatActivity {
 
 
         // Always update overlay
-//        updateSkeletonOverlay(imageWidth, imageHeight, leftWrist, rightWrist, leftElbow, rightElbow, leftShoulder, rightShoulder);
+        updateSkeletonOverlay(imageWidth, imageHeight, leftWrist, rightWrist, leftElbow, rightElbow, leftShoulder, rightShoulder);
     }
 
 
@@ -714,25 +715,102 @@ public class SimulationPage extends AppCompatActivity {
         return shutOffEnginePose1Done && shutOffEnginePose2Done;
     }
 
+    // Tracking phases for Pass Control
+    private boolean passControlPose1Done = false;
+    private boolean passControlPose2Done = false;
+    private boolean passControlPose3Done = false;
+    private boolean passControlPose4Done = false;
+    private boolean passControlPose5Done = false;
+    private boolean passControlPose6Done = false;
+    private long passControlStartTime = 0;
+
     private boolean detectPassControl(
-            PoseLandmark ls, PoseLandmark le, PoseLandmark lw, // left shoulder, elbow, wrist
-            PoseLandmark rs, PoseLandmark re, PoseLandmark rw  // right shoulder, elbow, wrist
+            PoseLandmark lw, PoseLandmark le, PoseLandmark ls, // left wrist, elbow, shoulder
+            PoseLandmark rw, PoseLandmark re, PoseLandmark rs  // right wrist, elbow, shoulder
     ) {
+        long now = System.currentTimeMillis();
+
         boolean leftArmRightAngle = (
                 ls.getPosition().x < le.getPosition().x && // shoulder X < elbow X
                         le.getPosition().x < lw.getPosition().x    // elbow X < wrist X
         );
 
-        // --- RIGHT ARM: raised up & elbow below shoulder ---
+        // --- RIGHT ARM: raised up ---
         boolean rightArmUp = (
-                rw.getPosition().y < re.getPosition().y && // wrist above elbow
-                        re.getPosition().y > rs.getPosition().y &&    // elbow below shoulder
-                        rw.getPosition().x < re.getPosition().x
+                rw.getPosition().y < re.getPosition().y    // wrist above elbow
         );
 
-        // For static pose detection, both must be true simultaneously
-        return leftArmRightAngle && rightArmUp;
+        // --- Frame 1: wrist LEFT of elbow ---
+        if (!passControlPose1Done &&
+                leftArmRightAngle &&
+                rightArmUp &&
+                rw.getPosition().x < re.getPosition().x) {
+
+            passControlPose1Done = true;
+            passControlStartTime = now;
+        }
+
+        // --- Frame 2: wrist RIGHT of elbow ---
+        if (passControlPose1Done &&
+                !passControlPose2Done &&
+                (now - passControlStartTime <= 4000) &&
+                leftArmRightAngle &&
+                rightArmUp &&
+                rw.getPosition().x > re.getPosition().x) {
+
+            passControlPose2Done = true;
+        }
+
+        // --- Frame 3: wrist LEFT of elbow ---
+        if (passControlPose2Done &&
+                !passControlPose3Done &&
+                (now - passControlStartTime <= 4000) &&
+                leftArmRightAngle &&
+                rightArmUp &&
+                rw.getPosition().x < re.getPosition().x) {
+
+            passControlPose3Done = true;
+        }
+
+        // --- Frame 4: wrist RIGHT of elbow ---
+        if (passControlPose3Done &&
+                !passControlPose4Done &&
+                (now - passControlStartTime <= 4000) &&
+                leftArmRightAngle &&
+                rightArmUp &&
+                rw.getPosition().x > re.getPosition().x) {
+
+            passControlPose4Done = true;
+        }
+
+        // --- Frame 5: Right arm vertical (shoulder above elbow above wrist) ---
+        if (passControlPose4Done &&
+                !passControlPose5Done &&
+                (now - passControlStartTime <= 5000) &&
+                rs.getPosition().y < re.getPosition().y &&
+                re.getPosition().y < rw.getPosition().y) {
+
+            passControlPose5Done = true;
+        }
+
+        // --- Frame 6: Right wrist passed left shoulder on X axis ---
+        if (passControlPose5Done &&
+                !passControlPose6Done &&
+                (now - passControlStartTime <= 5000) &&
+                rw.getPosition().x > ls.getPosition().x) {
+
+            passControlPose6Done = true;
+        }
+
+        return passControlPose1Done &&
+                passControlPose2Done &&
+                passControlPose3Done &&
+                passControlPose4Done &&
+                passControlPose5Done &&
+                passControlPose6Done;
     }
+
+
 
     // Tracking phases for Engine on Fire
     private boolean engineOnFirePose1Done = false;
@@ -996,6 +1074,14 @@ public class SimulationPage extends AppCompatActivity {
         turnLeftPose3Done = false;
         turnLeftPose4Done = false;
         turnLeftStartTime = 0;
+
+        passControlPose1Done = false;
+        passControlPose2Done = false;
+        passControlPose3Done = false;
+        passControlPose4Done = false;
+        passControlPose5Done = false;
+        passControlPose6Done = false;
+        passControlStartTime = 0;
 
         // ✅ Reset airplane rotation
         if (movableImage != null) {
