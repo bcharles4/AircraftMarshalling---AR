@@ -66,6 +66,10 @@ import android.os.Looper;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import android.graphics.PixelFormat;
+import android.graphics.SurfaceTexture;
+import android.view.Surface;
+import android.view.TextureView;
+
 
 
 
@@ -90,7 +94,7 @@ public class SimulationPage extends AppCompatActivity {
     private PoseDetector poseDetector;
     private boolean isUsingFrontCamera = false; // default = back camera
     private SceneView sceneView;
-    private SurfaceView filamentView;
+    private TextureView filamentView;
     private Engine engine;
     private Renderer renderer;
     private Scene scene;
@@ -137,33 +141,24 @@ public class SimulationPage extends AppCompatActivity {
                         .build();
         poseDetector = PoseDetection.getClient(options);
 
+        // TextureView instead of SurfaceView
         filamentView = findViewById(R.id.filamentView);
 
-        // 👇 make Filament SurfaceView transparent & on top of camera
-        filamentView.setZOrderOnTop(false);
-        filamentView.setZOrderMediaOverlay(true);
-        filamentView.getHolder().setFormat(PixelFormat.TRANSLUCENT);
-
-        filamentView.getHolder().addCallback(new android.view.SurfaceHolder.Callback() {
+        // 👇 listen for surface availability
+        filamentView.setSurfaceTextureListener(new TextureView.SurfaceTextureListener() {
             @Override
-            public void surfaceCreated(android.view.SurfaceHolder holder) {
-                initFilament(holder);
+            public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) {
+                Surface s = new Surface(surface);
+                initFilament(s);
 
                 Renderer.ClearOptions clearOptions = renderer.getClearOptions();
-
-                // Don’t clear the framebuffer color (camera feed stays visible)
                 clearOptions.clear = false;
-
-                // If you want a fallback (when preview is hidden), set clearColor to transparent
-                clearOptions.clearColor[0] = 0.0f; // R
-                clearOptions.clearColor[1] = 0.0f; // G
-                clearOptions.clearColor[2] = 0.0f; // B
-                clearOptions.clearColor[3] = 0.0f; // A
-
+                clearOptions.clearColor[0] = 0.0f;
+                clearOptions.clearColor[1] = 0.0f;
+                clearOptions.clearColor[2] = 0.0f;
+                clearOptions.clearColor[3] = 0.0f;
                 renderer.setClearOptions(clearOptions);
 
-
-                // Add sunlight
                 int sun = EntityManager.get().create();
                 new LightManager.Builder(LightManager.Type.DIRECTIONAL)
                         .color(1.0f, 1.0f, 1.0f)
@@ -173,9 +168,8 @@ public class SimulationPage extends AppCompatActivity {
                         .build(engine, sun);
                 scene.addEntity(sun);
 
-                // Set camera projection + position
                 camera.setProjection(45.0,
-                        (double) filamentView.getWidth() / filamentView.getHeight(),
+                        (double) width / height,
                         0.1, 50.0,
                         Camera.Fov.VERTICAL);
 
@@ -189,13 +183,12 @@ public class SimulationPage extends AppCompatActivity {
                         }
                 );
 
-                // 👇 load airplane once Surface is ready
                 loadAirplane();
                 handler.post(frameRunnable);
             }
 
             @Override
-            public void surfaceChanged(android.view.SurfaceHolder holder, int format, int width, int height) {
+            public void onSurfaceTextureSizeChanged(SurfaceTexture surface, int width, int height) {
                 if (camera != null) {
                     camera.setProjection(45.0, (double) width / height, 0.1, 50.0,
                             Camera.Fov.VERTICAL);
@@ -203,9 +196,15 @@ public class SimulationPage extends AppCompatActivity {
             }
 
             @Override
-            public void surfaceDestroyed(android.view.SurfaceHolder holder) {
+            public boolean onSurfaceTextureDestroyed(SurfaceTexture surface) {
                 handler.removeCallbacks(frameRunnable);
                 destroyFilament();
+                return true;
+            }
+
+            @Override
+            public void onSurfaceTextureUpdated(SurfaceTexture surface) {
+                // called every frame
             }
         });
 
@@ -220,10 +219,10 @@ public class SimulationPage extends AppCompatActivity {
 
         startSimButton.setOnClickListener(v -> {
             startSimButton.setVisibility(android.view.View.GONE);
-//            runwayContainer.setVisibility(View.VISIBLE);
-//            poseStatusText.setVisibility(View.VISIBLE);
-//            flipButton.setVisibility(View.VISIBLE);
-//            filamentView.setVisibility(android.view.View.VISIBLE);
+//        runwayContainer.setVisibility(View.VISIBLE);
+//        poseStatusText.setVisibility(View.VISIBLE);
+//        flipButton.setVisibility(View.VISIBLE);
+            filamentView.setVisibility(android.view.View.VISIBLE);
         });
 
         Intent intent2 = getIntent();
@@ -253,8 +252,9 @@ public class SimulationPage extends AppCompatActivity {
 
             return false;
         });
-
     }
+
+
 
     private void startCamera() {
         ListenableFuture<ProcessCameraProvider> cameraProviderFuture =
@@ -294,18 +294,18 @@ public class SimulationPage extends AppCompatActivity {
         }, ContextCompat.getMainExecutor(this));
     }
 
-    private void initFilament(android.view.SurfaceHolder holder) {
+    private void initFilament(Surface surface) {
         engine = Engine.create();
         renderer = engine.createRenderer();
-        swapChain = engine.createSwapChain(holder.getSurface());
+        swapChain = engine.createSwapChain(surface); // direct Surface works here
         scene = engine.createScene();
 
-        // ✅ Add a sunlight/directional light here
+        // ✅ Add sunlight/directional light
         int sun = EntityManager.get().create();
         new LightManager.Builder(LightManager.Type.DIRECTIONAL)
-                .color(1.0f, 1.0f, 1.0f)   // white light
-                .intensity(50_000.0f)      // brightness
-                .direction(0.0f, -1.0f, -1.0f) // shining downward & forward
+                .color(1.0f, 1.0f, 1.0f)
+                .intensity(50_000.0f)
+                .direction(0.0f, -1.0f, -1.0f)
                 .castShadows(true)
                 .build(engine, sun);
         scene.addEntity(sun);
@@ -317,18 +317,15 @@ public class SimulationPage extends AppCompatActivity {
         filamentSceneView.setScene(scene);
 
         // Asset loader
-        assetLoader = new AssetLoader(engine, new UbershaderProvider(engine), EntityManager.get());
-        resourceLoader = new ResourceLoader(engine);
-
         EntityManager entityManager = EntityManager.get();
         assetLoader = new AssetLoader(
                 engine,
                 new UbershaderProvider(engine),
                 entityManager
         );
-
         resourceLoader = new ResourceLoader(engine);
     }
+
 
 
     private Handler handler = new Handler(Looper.getMainLooper());
@@ -357,39 +354,36 @@ public class SimulationPage extends AppCompatActivity {
             buffer.put(bytes).rewind();
 
             airplaneAsset = assetLoader.createAsset(buffer);
-            resourceLoader.loadResources(airplaneAsset);
-
-            FilamentAsset asset = assetLoader.createAsset(buffer);
-            if (asset == null) {
+            if (airplaneAsset == null) {
                 Log.e("SimulationPage", "❌ Failed to load airplane.glb");
                 return;
             }
 
-            if (airplaneAsset != null) {
-                scene.addEntity(airplaneAsset.getRoot());
+            resourceLoader.loadResources(airplaneAsset);
 
-                // Add all entities
-                for (int entity : airplaneAsset.getEntities()) {
-                    scene.addEntity(entity);
-                }
+            // Add all entities
+            for (int entity : airplaneAsset.getEntities()) {
+                scene.addEntity(entity);
+            }
 
-                // Move the model in front of the camera
-                TransformManager tm = engine.getTransformManager();
-                int ti = tm.getInstance(airplaneAsset.getRoot());
+            // Move the model back along Z axis (so camera can see it)
+            TransformManager tm = engine.getTransformManager();
+            int ti = tm.getInstance(airplaneAsset.getRoot());
+
+            if (ti != 0) {
                 tm.setTransform(ti, new float[]{
                         1, 0, 0, 0,
                         0, 1, 0, 0,
                         0, 0, 1, 0,
-                        0, 0, -4, 1
+                        0, 0, -4, 1  // ✅ correct placement
                 });
             }
+
         } catch (Exception e) {
             e.printStackTrace();
         }
-
-        // Start render loop
-        handler.post(frameRunnable);
     }
+
 
 
     private void renderFrame() {
