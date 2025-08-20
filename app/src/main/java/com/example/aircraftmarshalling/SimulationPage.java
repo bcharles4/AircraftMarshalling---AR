@@ -7,7 +7,7 @@ import android.graphics.PointF;
 import android.media.Image;
 import android.os.Bundle;
 import android.util.Log;
-import android.view.View;
+//import android.view.View;
 import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.ImageButton;
@@ -45,8 +45,42 @@ import java.util.concurrent.ExecutionException;
 import android.animation.ObjectAnimator;
 import android.widget.ImageView;
 
+import io.github.sceneview.SceneView;
+import io.github.sceneview.node.ModelNode;
+
+import android.view.SurfaceView;
+
+import com.google.android.filament.*;
+import com.google.android.filament.gltfio.*;
+import com.google.android.filament.View;
+
+import java.io.InputStream;
+import java.nio.ByteBuffer;
+
+import com.google.android.filament.gltfio.AssetLoader;
+import com.google.android.filament.gltfio.FilamentAsset;
+import com.google.android.filament.gltfio.ResourceLoader;
+
+import android.os.Handler;
+import android.os.Looper;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import android.graphics.PixelFormat;
+
+
 
 public class SimulationPage extends AppCompatActivity {
+    static {
+        try {
+            System.loadLibrary("filament-jni");
+            System.loadLibrary("gltfio-jni");
+            System.loadLibrary("filament-utils-jni");
+        } catch (UnsatisfiedLinkError e) {
+            Log.e("Filament", "Failed to load filament native libs", e);
+        }
+    }
+
+
 
     private static final int REQUEST_CAMERA_PERMISSION = 1001;
     private  String name, email, phone;
@@ -55,6 +89,18 @@ public class SimulationPage extends AppCompatActivity {
     private TextView poseStatusText;
     private PoseDetector poseDetector;
     private boolean isUsingFrontCamera = false; // default = back camera
+    private SceneView sceneView;
+    private SurfaceView filamentView;
+    private Engine engine;
+    private Renderer renderer;
+    private Scene scene;
+    private Camera camera;
+    private View filamentSceneView;
+    private SwapChain swapChain;
+    private AssetLoader assetLoader;
+    private ResourceLoader resourceLoader;
+    private FilamentAsset airplaneAsset;
+//    private com.google.android.filament.View filamentSceneView;
 
     ImageView movableImage;
 
@@ -63,11 +109,13 @@ public class SimulationPage extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_simulation_page);
+
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.camera_page), (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
             return insets;
         });
+
         previewView = findViewById(R.id.previewView);
         poseOverlayView = findViewById(R.id.poseOverlayView);
         poseStatusText = findViewById(R.id.poseStatusText);
@@ -81,15 +129,85 @@ public class SimulationPage extends AppCompatActivity {
             startCamera(); // restart with new selector
         });
 
-        runwayContainer.setVisibility(View.GONE);
         movableImage = findViewById(R.id.movableImage);
 
         AccuratePoseDetectorOptions options =
                 new AccuratePoseDetectorOptions.Builder()
                         .setDetectorMode(AccuratePoseDetectorOptions.STREAM_MODE)
                         .build();
-
         poseDetector = PoseDetection.getClient(options);
+
+        filamentView = findViewById(R.id.filamentView);
+
+        // 👇 make Filament SurfaceView transparent & on top of camera
+        filamentView.setZOrderOnTop(false);
+        filamentView.setZOrderMediaOverlay(true);
+        filamentView.getHolder().setFormat(PixelFormat.TRANSLUCENT);
+
+        filamentView.getHolder().addCallback(new android.view.SurfaceHolder.Callback() {
+            @Override
+            public void surfaceCreated(android.view.SurfaceHolder holder) {
+                initFilament(holder);
+
+                Renderer.ClearOptions clearOptions = renderer.getClearOptions();
+
+                // Don’t clear the framebuffer color (camera feed stays visible)
+                clearOptions.clear = false;
+
+                // If you want a fallback (when preview is hidden), set clearColor to transparent
+                clearOptions.clearColor[0] = 0.0f; // R
+                clearOptions.clearColor[1] = 0.0f; // G
+                clearOptions.clearColor[2] = 0.0f; // B
+                clearOptions.clearColor[3] = 0.0f; // A
+
+                renderer.setClearOptions(clearOptions);
+
+
+                // Add sunlight
+                int sun = EntityManager.get().create();
+                new LightManager.Builder(LightManager.Type.DIRECTIONAL)
+                        .color(1.0f, 1.0f, 1.0f)
+                        .intensity(50_000.0f)
+                        .direction(0.0f, -1.0f, -1.0f)
+                        .castShadows(true)
+                        .build(engine, sun);
+                scene.addEntity(sun);
+
+                // Set camera projection + position
+                camera.setProjection(45.0,
+                        (double) filamentView.getWidth() / filamentView.getHeight(),
+                        0.1, 50.0,
+                        Camera.Fov.VERTICAL);
+
+                engine.getTransformManager().setTransform(
+                        engine.getTransformManager().getInstance(camera.getEntity()),
+                        new float[]{
+                                1, 0, 0, 0,
+                                0, 1, 0, 0,
+                                0, 0, 1, 0,
+                                0, 0, 5, 1
+                        }
+                );
+
+                // 👇 load airplane once Surface is ready
+                loadAirplane();
+                handler.post(frameRunnable);
+            }
+
+            @Override
+            public void surfaceChanged(android.view.SurfaceHolder holder, int format, int width, int height) {
+                if (camera != null) {
+                    camera.setProjection(45.0, (double) width / height, 0.1, 50.0,
+                            Camera.Fov.VERTICAL);
+                }
+            }
+
+            @Override
+            public void surfaceDestroyed(android.view.SurfaceHolder holder) {
+                handler.removeCallbacks(frameRunnable);
+                destroyFilament();
+            }
+        });
 
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
                 == PackageManager.PERMISSION_GRANTED) {
@@ -101,10 +219,11 @@ public class SimulationPage extends AppCompatActivity {
         }
 
         startSimButton.setOnClickListener(v -> {
-            startSimButton.setVisibility(View.GONE);
-            runwayContainer.setVisibility(View.VISIBLE);
-            poseStatusText.setVisibility(View.VISIBLE);
-            flipButton.setVisibility(View.VISIBLE);
+            startSimButton.setVisibility(android.view.View.GONE);
+//            runwayContainer.setVisibility(View.VISIBLE);
+//            poseStatusText.setVisibility(View.VISIBLE);
+//            flipButton.setVisibility(View.VISIBLE);
+//            filamentView.setVisibility(android.view.View.VISIBLE);
         });
 
         Intent intent2 = getIntent();
@@ -175,6 +294,126 @@ public class SimulationPage extends AppCompatActivity {
         }, ContextCompat.getMainExecutor(this));
     }
 
+    private void initFilament(android.view.SurfaceHolder holder) {
+        engine = Engine.create();
+        renderer = engine.createRenderer();
+        swapChain = engine.createSwapChain(holder.getSurface());
+        scene = engine.createScene();
+
+        // ✅ Add a sunlight/directional light here
+        int sun = EntityManager.get().create();
+        new LightManager.Builder(LightManager.Type.DIRECTIONAL)
+                .color(1.0f, 1.0f, 1.0f)   // white light
+                .intensity(50_000.0f)      // brightness
+                .direction(0.0f, -1.0f, -1.0f) // shining downward & forward
+                .castShadows(true)
+                .build(engine, sun);
+        scene.addEntity(sun);
+
+        // Camera + View
+        camera = engine.createCamera(engine.getEntityManager().create());
+        filamentSceneView = engine.createView();
+        filamentSceneView.setCamera(camera);
+        filamentSceneView.setScene(scene);
+
+        // Asset loader
+        assetLoader = new AssetLoader(engine, new UbershaderProvider(engine), EntityManager.get());
+        resourceLoader = new ResourceLoader(engine);
+
+        EntityManager entityManager = EntityManager.get();
+        assetLoader = new AssetLoader(
+                engine,
+                new UbershaderProvider(engine),
+                entityManager
+        );
+
+        resourceLoader = new ResourceLoader(engine);
+    }
+
+
+    private Handler handler = new Handler(Looper.getMainLooper());
+    private final Runnable frameRunnable = new Runnable() {
+        @Override
+        public void run() {
+            if (engine != null && renderer != null && swapChain != null && filamentSceneView != null) {
+                if (renderer.beginFrame(swapChain, System.nanoTime())) {
+                    renderer.render(filamentSceneView);
+                    renderer.endFrame();
+                }
+            }
+            handler.postDelayed(this, 16); // ~60fps
+        }
+    };
+
+    private void loadAirplane() {
+        try {
+            InputStream input = getAssets().open("models/airplane.glb");
+            byte[] bytes = new byte[input.available()];
+            input.read(bytes);
+            input.close();
+
+            ByteBuffer buffer = ByteBuffer.allocateDirect(bytes.length)
+                    .order(ByteOrder.nativeOrder());
+            buffer.put(bytes).rewind();
+
+            airplaneAsset = assetLoader.createAsset(buffer);
+            resourceLoader.loadResources(airplaneAsset);
+
+            FilamentAsset asset = assetLoader.createAsset(buffer);
+            if (asset == null) {
+                Log.e("SimulationPage", "❌ Failed to load airplane.glb");
+                return;
+            }
+
+            if (airplaneAsset != null) {
+                scene.addEntity(airplaneAsset.getRoot());
+
+                // Add all entities
+                for (int entity : airplaneAsset.getEntities()) {
+                    scene.addEntity(entity);
+                }
+
+                // Move the model in front of the camera
+                TransformManager tm = engine.getTransformManager();
+                int ti = tm.getInstance(airplaneAsset.getRoot());
+                tm.setTransform(ti, new float[]{
+                        1, 0, 0, 0,
+                        0, 1, 0, 0,
+                        0, 0, 1, 0,
+                        0, 0, -4, 1
+                });
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        // Start render loop
+        handler.post(frameRunnable);
+    }
+
+
+    private void renderFrame() {
+        long now = System.nanoTime();  // current time in nanoseconds
+
+        if (renderer.beginFrame(swapChain, now)) {   // 👈 pass swapChain + time
+            renderer.render(filamentSceneView);
+            renderer.endFrame();
+        }
+
+        filamentView.post(this::renderFrame);
+    }
+
+
+    private void destroyFilament() {
+        if (engine != null) {
+            engine.destroyRenderer(renderer);
+            engine.destroyView(filamentSceneView); // ✅ filament View, not android.view.View
+            engine.destroyScene(scene);
+            engine.destroyCameraComponent(camera.getEntity());
+            engine.destroySwapChain(swapChain);
+            engine.destroy();
+        }
+    }
 
 
 

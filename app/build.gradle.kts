@@ -14,7 +14,12 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        ndk {
+            abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64")
+        }
     }
+
 
     buildTypes {
         release {
@@ -57,5 +62,13 @@ dependencies {
     implementation("com.google.mlkit:pose-detection-accurate:17.0.1-beta1")
 
     implementation("com.android.volley:volley:1.2.1")
+
+    //for kotlin
+    implementation("io.github.sceneview:sceneview:0.10.0")
+
+    // for java
+    implementation("com.google.android.filament:filament-android:1.17.1")
+    implementation("com.google.android.filament:gltfio-android:1.17.1")
+    implementation("com.google.android.filament:filament-utils-android:1.17.1")
 
 }

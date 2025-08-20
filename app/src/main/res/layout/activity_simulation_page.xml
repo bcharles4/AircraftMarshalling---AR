@@ -10,6 +10,12 @@
     tools:context=".SimulationPage">
 
 
+    <TextureView
+        android:id="@+id/filamentView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone" />
+
     <!-- CameraX PreviewView -->
     <androidx.camera.view.PreviewView
         android:id="@+id/previewView"
@@ -20,6 +26,8 @@
         app:layout_constraintBottom_toTopOf="@id/bottom_navigation"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
+
+
 
     <com.example.aircraftmarshalling.PoseOverlayView
         android:id="@+id/poseOverlayView"
@@ -82,6 +90,15 @@
             android:longClickable="false" />
 
     </FrameLayout>
+
+<!--    <io.github.sceneview.SceneView-->
+<!--        android:id="@+id/sceneView"-->
+<!--        android:layout_width="match_parent"-->
+<!--        android:layout_height="300dp"-->
+<!--        app:layout_constraintBottom_toTopOf="@id/bottom_navigation"-->
+<!--        app:layout_constraintStart_toStartOf="parent"-->
+<!--        app:layout_constraintEnd_toEndOf="parent" />-->
+
 
 
     <!-- Bottom Navigation Bar -->
