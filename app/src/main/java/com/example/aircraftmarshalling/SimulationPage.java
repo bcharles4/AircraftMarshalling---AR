@@ -51,7 +51,19 @@ import com.google.android.filament.Engine;
 import com.google.android.filament.android.UiHelper;
 import com.google.android.filament.utils.ModelViewer;
 import com.google.android.filament.utils.Utils;
+import com.google.android.filament.Skybox;
+import com.google.android.filament.utils.Float3;
+import com.google.android.filament.TransformManager;
 
+import android.graphics.PixelFormat;
+import android.os.Bundle;
+import android.view.SurfaceView;
+import android.view.MotionEvent;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.ByteBuffer;
+import android.view.TextureView;
 
 public class SimulationPage extends AppCompatActivity {
 
@@ -70,6 +82,7 @@ public class SimulationPage extends AppCompatActivity {
     ImageView movableImage;
 
     private SurfaceView surfaceView;
+    private TextureView filamentView;
     private Choreographer choreographer;
     private ModelViewer modelViewer;
 
@@ -95,7 +108,6 @@ public class SimulationPage extends AppCompatActivity {
         poseOverlayView = findViewById(R.id.poseOverlayView);
         poseStatusText = findViewById(R.id.poseStatusText);
         Button startSimButton = findViewById(R.id.startSim_button);
-        FrameLayout runwayContainer = findViewById(R.id.runwayContainer);
         BottomNavigationView bottomNavigationView = findViewById(R.id.bottom_navigation);
 
         ImageButton flipButton = findViewById(R.id.flipButton);
@@ -103,9 +115,6 @@ public class SimulationPage extends AppCompatActivity {
             isUsingFrontCamera = !isUsingFrontCamera; // toggle
             startCamera(); // restart with new selector
         });
-
-        runwayContainer.setVisibility(View.GONE);
-        movableImage = findViewById(R.id.movableImage);
 
         AccuratePoseDetectorOptions options =
                 new AccuratePoseDetectorOptions.Builder()
@@ -123,20 +132,25 @@ public class SimulationPage extends AppCompatActivity {
                     REQUEST_CAMERA_PERMISSION);
         }
 
-        surfaceView = new SurfaceView(this);
-        setContentView(surfaceView);
+        filamentView = findViewById(R.id.filamentView);
+        filamentView.setOpaque(false);
 
         choreographer = Choreographer.getInstance();
+
         Engine engine = Engine.create();
         UiHelper uiHelper = new UiHelper(UiHelper.ContextErrorPolicy.DONT_CHECK);
-        ModelViewer modelViewer = new ModelViewer(surfaceView, engine, uiHelper, /* manipulator = */ null);
+        modelViewer = new ModelViewer(filamentView, engine, uiHelper, /* manipulator = */ null);
 
+        loadGlb("EmmittingEroplano");
+        modelViewer.getScene().setSkybox(null);
 
-        surfaceView.setOnTouchListener(modelViewer);
+        filamentView.setOnTouchListener((v, event) -> {
+            modelViewer.onTouchEvent(event);
+            return true;
+        });
 
         startSimButton.setOnClickListener(v -> {
             startSimButton.setVisibility(View.GONE);
-            runwayContainer.setVisibility(View.VISIBLE);
             poseStatusText.setVisibility(View.VISIBLE);
             flipButton.setVisibility(View.VISIBLE);
         });
@@ -169,6 +183,44 @@ public class SimulationPage extends AppCompatActivity {
             return false;
         });
 
+    }
+
+    private void loadGlb(String name) {
+        ByteBuffer buffer = readAsset("models/" + name + ".glb");
+        modelViewer.loadModelGlb(buffer);
+
+        // Scale model into unit cube around origin
+        modelViewer.transformToUnitCube(new Float3(0.0f, 0.0f, 0.0f));
+
+        // Scale down to 50%
+        int root = modelViewer.getAsset().getRoot();
+        TransformManager tm = modelViewer.getEngine().getTransformManager();
+        int instance = tm.getInstance(root);
+        float scale = 0.5f;
+        float[] matrix = {
+                scale, 0,     0,     0,
+                0,     scale, 0,     0,
+                0,     0,     scale, 0,
+                0,     0,     0,     1
+        };
+        tm.setTransform(instance, matrix);
+        modelViewer.getScene().setSkybox(null);
+    }
+
+
+    private ByteBuffer readAsset(String assetName) {
+        try (InputStream input = getAssets().open(assetName)) {
+            byte[] bytes = new byte[input.available()];
+            int read = input.read(bytes);
+            Log.d("SimulationPage", "Loaded asset " + assetName + ", bytes: " + bytes.length);
+            if (read != bytes.length) {
+                throw new IOException("Could not read full asset: " + assetName);
+            }
+            return ByteBuffer.wrap(bytes);
+        } catch (IOException e) {
+            Log.e("SimulationPage", "Error reading asset " + assetName, e);
+            throw new RuntimeException("Error reading asset " + assetName, e);
+        }
     }
 
     @Override
@@ -312,7 +364,7 @@ public class SimulationPage extends AppCompatActivity {
 
 
         // End of 5-second detection
-        if (elapsed >= 4) {
+        if (elapsed >= 5) {
             if (normalStop) { // ✅ Added
                 lastDetectionResult = "Normal Stop";
             }

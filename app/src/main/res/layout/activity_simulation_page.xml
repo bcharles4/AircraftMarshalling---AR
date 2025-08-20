@@ -21,10 +21,16 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
+    <TextureView
+        android:id="@+id/filamentView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"/>
+
     <com.example.aircraftmarshalling.PoseOverlayView
         android:id="@+id/poseOverlayView"
         android:layout_width="match_parent"
-        android:layout_height="match_parent" />
+        android:layout_height="match_parent"
+        android:visibility="gone"/>
 
 
     <TextView
@@ -58,30 +64,6 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
-
-    <FrameLayout
-        android:id="@+id/runwayContainer"
-        android:layout_width="match_parent"
-        android:layout_height="300dp"
-        android:visibility="gone"
-
-        app:layout_constraintBottom_toTopOf="@id/bottom_navigation"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent">
-
-        <ImageView
-            android:id="@+id/movableImage"
-            android:layout_width="220dp"
-            android:layout_height="220dp"
-            android:layout_gravity="center"
-            android:src="@drawable/airplane"
-            android:contentDescription="@string/airplane_description"
-            android:scaleType="fitCenter"
-            android:clickable="false"
-            android:focusable="false"
-            android:longClickable="false" />
-
-    </FrameLayout>
 
 
     <!-- Bottom Navigation Bar -->
