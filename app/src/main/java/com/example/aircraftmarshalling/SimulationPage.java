@@ -45,8 +45,19 @@ import java.util.concurrent.ExecutionException;
 import android.animation.ObjectAnimator;
 import android.widget.ImageView;
 
+import android.view.Choreographer;
+import android.view.SurfaceView;
+import com.google.android.filament.Engine;
+import com.google.android.filament.android.UiHelper;
+import com.google.android.filament.utils.ModelViewer;
+import com.google.android.filament.utils.Utils;
+
 
 public class SimulationPage extends AppCompatActivity {
+
+    static {
+        Utils.INSTANCE.init();
+    }
 
     private static final int REQUEST_CAMERA_PERMISSION = 1001;
     private  String name, email, phone;
@@ -57,6 +68,18 @@ public class SimulationPage extends AppCompatActivity {
     private boolean isUsingFrontCamera = false; // default = back camera
 
     ImageView movableImage;
+
+    private SurfaceView surfaceView;
+    private Choreographer choreographer;
+    private ModelViewer modelViewer;
+
+    private final Choreographer.FrameCallback frameCallback = new Choreographer.FrameCallback() {
+        @Override
+        public void doFrame(long currentTime) {
+            choreographer.postFrameCallback(this);
+            modelViewer.render(currentTime);
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -100,6 +123,17 @@ public class SimulationPage extends AppCompatActivity {
                     REQUEST_CAMERA_PERMISSION);
         }
 
+        surfaceView = new SurfaceView(this);
+        setContentView(surfaceView);
+
+        choreographer = Choreographer.getInstance();
+        Engine engine = Engine.create();
+        UiHelper uiHelper = new UiHelper(UiHelper.ContextErrorPolicy.DONT_CHECK);
+        ModelViewer modelViewer = new ModelViewer(surfaceView, engine, uiHelper, /* manipulator = */ null);
+
+
+        surfaceView.setOnTouchListener(modelViewer);
+
         startSimButton.setOnClickListener(v -> {
             startSimButton.setVisibility(View.GONE);
             runwayContainer.setVisibility(View.VISIBLE);
@@ -135,6 +169,24 @@ public class SimulationPage extends AppCompatActivity {
             return false;
         });
 
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        choreographer.postFrameCallback(frameCallback);
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        choreographer.removeFrameCallback(frameCallback);
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        choreographer.removeFrameCallback(frameCallback);
     }
 
     private void startCamera() {

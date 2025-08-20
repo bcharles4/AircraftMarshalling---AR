@@ -58,4 +58,8 @@ dependencies {
 
     implementation("com.android.volley:volley:1.2.1")
 
+    implementation("com.google.android.filament:filament-android:1.57.1")
+    implementation("com.google.android.filament:filament-utils-android:1.57.1")
+    implementation("com.google.android.filament:gltfio-android:1.57.1")
+
 }
