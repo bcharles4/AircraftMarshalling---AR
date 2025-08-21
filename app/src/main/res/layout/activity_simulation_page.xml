@@ -21,10 +21,12 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
-    <TextureView
+    <!-- Replace TextureView with SurfaceView for Filament 3D display -->
+    <SurfaceView
         android:id="@+id/filamentView"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"/>
+        android:layout_height="match_parent"
+        android:background="@android:color/transparent" />
 
     <com.example.aircraftmarshalling.PoseOverlayView
         android:id="@+id/poseOverlayView"

@@ -82,7 +82,7 @@ public class SimulationPage extends AppCompatActivity {
     ImageView movableImage;
 
     private SurfaceView surfaceView;
-    private TextureView filamentView;
+    private SurfaceView filamentView; // Change from TextureView to SurfaceView
     private Choreographer choreographer;
     private ModelViewer modelViewer;
 
@@ -132,19 +132,19 @@ public class SimulationPage extends AppCompatActivity {
                     REQUEST_CAMERA_PERMISSION);
         }
 
-        filamentView = findViewById(R.id.filamentView);
-        filamentView.setOpaque(false);
+        filamentView = findViewById(R.id.filamentView); // SurfaceView
 
         choreographer = Choreographer.getInstance();
 
         Engine engine = Engine.create();
         UiHelper uiHelper = new UiHelper(UiHelper.ContextErrorPolicy.DONT_CHECK);
         uiHelper.setOpaque(false);
-        modelViewer = new ModelViewer(filamentView, engine, uiHelper, /* manipulator = */ null);
+        modelViewer = new ModelViewer(filamentView, engine, uiHelper, /* manipulator = */ null); // SurfaceView
 
         loadGlb("EmmittingEroplano");
         modelViewer.getScene().setSkybox(null);
 
+        // SurfaceView does not support onTouchListener directly, but we can still set it
         filamentView.setOnTouchListener((v, event) -> {
             modelViewer.onTouchEvent(event);
             return true;
@@ -960,7 +960,6 @@ public class SimulationPage extends AppCompatActivity {
                         re.getPosition().y > rs.getPosition().y && // elbow below shoulder
                         rw.getPosition().x < re.getPosition().x    // wrist left of elbow (X-axis)
         );
-
         // --- RIGHT ARM: down position ---
         boolean rightArmDown = (
                 rw.getPosition().y > re.getPosition().y && // wrist below elbow
