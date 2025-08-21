@@ -139,6 +139,7 @@ public class SimulationPage extends AppCompatActivity {
 
         Engine engine = Engine.create();
         UiHelper uiHelper = new UiHelper(UiHelper.ContextErrorPolicy.DONT_CHECK);
+        uiHelper.setOpaque(false);
         modelViewer = new ModelViewer(filamentView, engine, uiHelper, /* manipulator = */ null);
 
         loadGlb("EmmittingEroplano");
