@@ -48,6 +48,13 @@ import com.google.android.filament.Skybox;
 import com.google.android.filament.utils.Float3;
 import com.google.android.filament.TransformManager;
 import com.google.android.filament.Renderer;
+import com.google.android.filament.Engine;
+import com.google.android.filament.Scene;
+import com.google.android.filament.LightManager;
+import com.google.android.filament.EntityManager;
+import com.google.android.filament.gltfio.ResourceLoader;
+
+
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.mlkit.vision.common.InputImage;
 import com.google.mlkit.vision.pose.Pose;
@@ -77,6 +84,20 @@ import java.io.InputStream;
 import java.nio.ByteBuffer;
 import android.view.TextureView;
 
+// Android animation
+import android.animation.ValueAnimator;
+import android.animation.Animator;
+import android.animation.AnimatorListenerAdapter;
+import android.view.animation.AccelerateDecelerateInterpolator;
+
+// Filament
+import com.google.android.filament.TransformManager;
+
+// Math
+import static java.lang.Math.cos;
+import static java.lang.Math.sin;
+import static java.lang.Math.toRadians;
+
 public class SimulationPage extends AppCompatActivity {
 
     static {
@@ -93,7 +114,6 @@ public class SimulationPage extends AppCompatActivity {
 
     ImageView movableImage;
 
-    private SurfaceView surfaceView;
     private SurfaceView filamentView; // Change from TextureView to SurfaceView
     private Choreographer choreographer;
     private ModelViewer modelViewer;
@@ -158,19 +178,11 @@ public class SimulationPage extends AppCompatActivity {
         modelViewer = new ModelViewer(filamentView, engine, uiHelper, /* manipulator = */ null);
 
 
-        // Set Filament renderer clear color to transparent
-        Renderer.ClearOptions clearOptions = new Renderer.ClearOptions();
-        clearOptions.clear = true;
-        clearOptions.clearColor[0] = 0f;
-        clearOptions.clearColor[1] = 0f;
-        clearOptions.clearColor[2] = 0f;
-        clearOptions.clearColor[3] = 0f; // alpha
-        modelViewer.getRenderer().setClearOptions(clearOptions);
-
         makeTransparentBackground(); // <-- Add this call after modelViewer is created
 
-        loadGlb("EmmittingEroplano");
-        modelViewer.getScene().setSkybox(null);
+        loadGlb("ColoredAirplane");
+
+        addDefaultLights();
 
 //        filamentView.setOnTouchListener((v, event) -> {
 //            modelViewer.onTouchEvent(event);
@@ -217,6 +229,10 @@ public class SimulationPage extends AppCompatActivity {
         ByteBuffer buffer = readAsset("models/" + name + ".glb");
         modelViewer.loadModelGlb(buffer);
 
+        ResourceLoader resourceLoader = new ResourceLoader(modelViewer.getEngine());
+        resourceLoader.loadResources(modelViewer.getAsset());
+
+
         // Scale model into unit cube around origin
         modelViewer.transformToUnitCube(new Float3(0.0f, 0.0f, 0.0f));
 
@@ -224,7 +240,7 @@ public class SimulationPage extends AppCompatActivity {
         int root = modelViewer.getAsset().getRoot();
         TransformManager tm = modelViewer.getEngine().getTransformManager();
         int instance = tm.getInstance(root);
-        float scale = 0.5f;
+        float scale = 0.7f;
         float[] matrix = {
                 scale, 0,     0,     0,
                 0,     scale, 0,     0,
@@ -411,11 +427,13 @@ public class SimulationPage extends AppCompatActivity {
             }
             else if (turnRight) {
                 lastDetectionResult = "Turn Right";
-                rotateAirplane(movableImage.getRotation() + 25f); // turn 10° right
+//                rotateAirplane(movableImage.getRotation() + 25f); // turn 10° right
+                turnRight(4000);
             }
             else if (turnLeft) {
                 lastDetectionResult = "Turn Left";
-                rotateAirplane(movableImage.getRotation() - 25f); // turn 10° left
+//                rotateAirplane(movableImage.getRotation() - 25f); // turn 10° left
+                turnLeft(3000);
             }
             else if (engineFire) {
                 lastDetectionResult = "Engine on Fire";
@@ -1323,4 +1341,106 @@ public class SimulationPage extends AppCompatActivity {
         options.clearColor[3] = 0f; // alpha
         modelViewer.getRenderer().setClearOptions(options);
     }
+
+    private void addDefaultLights() {
+        Engine engine = modelViewer.getEngine();
+        Scene scene = modelViewer.getScene();
+
+        // === Top-down sunlight (main light) ===
+        int sunlight = EntityManager.get().create();
+        new LightManager.Builder(LightManager.Type.DIRECTIONAL)
+                .color(1.0f, 0.90f, 0.9f)       // slightly warm white
+                .intensity(1_800_000.0f)           // strong but not bleaching
+                .direction(0.0f, -1.0f, -0.3f)
+                .castShadows(false)
+                .build(engine, sunlight);
+        scene.addEntity(sunlight);
+
+        // === Front light (camera-facing fill) ===
+        int frontLight = EntityManager.get().create();
+        new LightManager.Builder(LightManager.Type.DIRECTIONAL)
+                .color(1.0f, .90f, 1.0f)
+                .intensity(1_500_000.0f)
+                .direction(0.0f, 0.0f, -1.0f)
+                .castShadows(false)
+                .build(engine, frontLight);
+        scene.addEntity(frontLight);
+
+        // === Bottom light (so underside isn't black) ===
+        int bottomLight = EntityManager.get().create();
+        new LightManager.Builder(LightManager.Type.DIRECTIONAL)
+                .color(0.9f, 0.90f, 1.0f)       // cooler tint
+                .intensity(1_350_000.0f)
+                .direction(0.0f, 1.0f, 0.0f)    // pointing upward
+                .castShadows(false)
+                .build(engine, bottomLight);
+        scene.addEntity(bottomLight);
+
+        // === Ambient fake IBL (big soft omni fill) ===
+        int ambient = EntityManager.get().create();
+        new LightManager.Builder(LightManager.Type.POINT)
+                .color(1.0f, 1.0f, 1.0f)
+                .intensity(1_250_000.0f)          // global base fill
+                .falloff(200.0f)               // make it very broad
+                .position(0.0f, 1.5f, 2.0f)    // slightly above/in front
+                .castShadows(false)
+                .build(engine, ambient);
+        scene.addEntity(ambient);
+    }
+
+    float currentAngle = 0f; // keep track of the current rotation
+    float scale = 0.7f;      // your model’s scale
+
+    private void applyTransform(float angleDegrees) {
+        int root = modelViewer.getAsset().getRoot();
+        TransformManager tm = modelViewer.getEngine().getTransformManager();
+        int instance = tm.getInstance(root);
+
+        float angle = (float) Math.toRadians(angleDegrees);
+        float cos = (float) Math.cos(angle);
+        float sin = (float) Math.sin(angle);
+
+        float[] matrix = {
+                scale * cos,  0,  scale * -sin,  0,
+                0,            scale, 0,          0,
+                scale * sin,  0,  scale * cos,   0,
+                0,            0,    0,           1
+        };
+
+        tm.setTransform(instance, matrix);
+    }
+
+    // Call this to rotate smoothly
+    private void rotateBy(final float deltaAngle, int durationMs) {
+        float startAngle = currentAngle;
+        float endAngle = currentAngle + deltaAngle;
+
+        ValueAnimator animator = ValueAnimator.ofFloat(startAngle, endAngle);
+        animator.setDuration(durationMs);
+        animator.addUpdateListener(animation -> {
+            float animatedValue = (float) animation.getAnimatedValue();
+            applyTransform(animatedValue);
+        });
+        animator.addListener(new AnimatorListenerAdapter() {
+            @Override
+            public void onAnimationEnd(Animator animation) {
+                currentAngle = endAngle % 360; // keep angle normalized
+            }
+        });
+        animator.start();
+    }
+
+    // Turn left (negative Y rotation)
+    public void turnLeft(int durationMs) {
+        rotateBy(-90f, durationMs); // rotate 90° left over duration
+    }
+
+    // Turn right (positive Y rotation)
+    public void turnRight(int durationMs) {
+        rotateBy(90f, durationMs);  // rotate 90° right over duration
+    }
+
+
+
+
 }
