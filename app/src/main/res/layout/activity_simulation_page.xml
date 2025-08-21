@@ -9,16 +9,9 @@
     android:background="@color/bg_color"
     tools:context=".SimulationPage">
 
-    <!-- SurfaceView for Filament 3D display, must be after PreviewView for correct Z-order -->
-    <SurfaceView
-        android:id="@+id/filamentView"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:background="@android:color/transparent" />
 
-
-    <!-- CameraX PreviewView -->
-    <androidx.camera.view.PreviewView
+    <!-- TextureView for CameraX preview (replaces PreviewView) -->
+    <TextureView
         android:id="@+id/previewView"
         android:layout_width="0dp"
         android:layout_height="0dp"
@@ -29,6 +22,20 @@
         app:layout_constraintEnd_toEndOf="parent" />
 
 
+    <!-- SurfaceView for Filament 3D display, must be after TextureView for correct Z-order -->
+
+
+    <SurfaceView
+        android:id="@+id/filamentView"
+        android:layout_width="405dp"
+        android:layout_height="548dp"
+        android:background="@android:color/transparent"
+        app:layout_constraintBottom_toBottomOf="@+id/previewView"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="1.0"
+        app:layout_constraintStart_toStartOf="@+id/previewView"
+        app:layout_constraintTop_toTopOf="@+id/previewView"
+        app:layout_constraintVertical_bias="0.66" />
 
     <com.example.aircraftmarshalling.PoseOverlayView
         android:id="@+id/poseOverlayView"
@@ -54,23 +61,24 @@
         android:layout_marginTop="24dp" />
 
     <!-- Start Button -->
+
+
+    <!-- Bottom Navigation Bar -->
     <Button
         android:id="@+id/startSim_button"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:backgroundTint="@color/white"
         android:text="Start Simulation"
+        android:textAllCaps="false"
+        android:textColor="@color/black"
         android:textSize="16sp"
         android:textStyle="bold"
-        android:backgroundTint="@color/white"
-        android:textColor="@color/black"
-        android:textAllCaps="false"
-        app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
+        app:layout_constraintTop_toTopOf="parent" />
 
-
-    <!-- Bottom Navigation Bar -->
     <com.google.android.material.bottomnavigation.BottomNavigationView
         style="@style/BottomNavStyle"
         android:id="@+id/bottom_navigation"

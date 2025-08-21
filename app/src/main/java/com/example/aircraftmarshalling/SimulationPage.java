@@ -3,11 +3,13 @@ package com.example.aircraftmarshalling;
 import android.Manifest;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
 import android.graphics.PointF;
 import android.media.Image;
 import android.os.Bundle;
 import android.util.Log;
-import android.view.View;
+import android.view.Surface;
+//import android.view.View;
 import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.ImageButton;
@@ -22,7 +24,6 @@ import androidx.camera.core.ImageAnalysis;
 import androidx.camera.core.ImageProxy;
 import androidx.camera.core.Preview;
 import androidx.camera.lifecycle.ProcessCameraProvider;
-import androidx.camera.view.PreviewView;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.core.graphics.Insets;
@@ -30,6 +31,23 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
 import com.google.android.material.bottomnavigation.BottomNavigationView;
+import com.google.common.util.concurrent.ListenableFuture;
+import com.google.mlkit.vision.common.InputImage;
+import com.google.mlkit.vision.pose.Pose;
+import com.google.mlkit.vision.pose.PoseDetection;
+import com.google.mlkit.vision.pose.PoseDetector;
+import com.google.mlkit.vision.pose.PoseLandmark;
+import com.google.mlkit.vision.pose.accurate.AccuratePoseDetectorOptions;
+
+import com.google.android.filament.Engine;
+import com.google.android.filament.View;
+import com.google.android.filament.android.UiHelper;
+import com.google.android.filament.utils.ModelViewer;
+import com.google.android.filament.utils.Utils;
+import com.google.android.filament.Skybox;
+import com.google.android.filament.utils.Float3;
+import com.google.android.filament.TransformManager;
+import com.google.android.filament.Renderer;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.mlkit.vision.common.InputImage;
 import com.google.mlkit.vision.pose.Pose;
@@ -47,13 +65,7 @@ import android.widget.ImageView;
 
 import android.view.Choreographer;
 import android.view.SurfaceView;
-import com.google.android.filament.Engine;
-import com.google.android.filament.android.UiHelper;
-import com.google.android.filament.utils.ModelViewer;
-import com.google.android.filament.utils.Utils;
-import com.google.android.filament.Skybox;
-import com.google.android.filament.utils.Float3;
-import com.google.android.filament.TransformManager;
+import android.view.TextureView;
 
 import android.graphics.PixelFormat;
 import android.os.Bundle;
@@ -73,7 +85,7 @@ public class SimulationPage extends AppCompatActivity {
 
     private static final int REQUEST_CAMERA_PERMISSION = 1001;
     private  String name, email, phone;
-    private PreviewView previewView;
+    private TextureView previewView; // Change from PreviewView to TextureView
     private PoseOverlayView poseOverlayView;
     private TextView poseStatusText;
     private PoseDetector poseDetector;
@@ -104,7 +116,7 @@ public class SimulationPage extends AppCompatActivity {
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
             return insets;
         });
-        previewView = findViewById(R.id.previewView);
+        previewView = findViewById(R.id.previewView); // Now a TextureView
         poseOverlayView = findViewById(R.id.poseOverlayView);
         poseStatusText = findViewById(R.id.poseStatusText);
         Button startSimButton = findViewById(R.id.startSim_button);
@@ -136,7 +148,7 @@ public class SimulationPage extends AppCompatActivity {
 
         // Make SurfaceView transparent and set Z order
         filamentView.setZOrderOnTop(true);
-        filamentView.getHolder().setFormat(PixelFormat.TRANSLUCENT);
+//        filamentView.getHolder().setFormat(PixelFormat.TRANSLUCENT);
 
         choreographer = Choreographer.getInstance();
 
@@ -146,19 +158,29 @@ public class SimulationPage extends AppCompatActivity {
         modelViewer = new ModelViewer(filamentView, engine, uiHelper, /* manipulator = */ null);
 
 
+        // Set Filament renderer clear color to transparent
+        Renderer.ClearOptions clearOptions = new Renderer.ClearOptions();
+        clearOptions.clear = true;
+        clearOptions.clearColor[0] = 0f;
+        clearOptions.clearColor[1] = 0f;
+        clearOptions.clearColor[2] = 0f;
+        clearOptions.clearColor[3] = 0f; // alpha
+        modelViewer.getRenderer().setClearOptions(clearOptions);
+
+        makeTransparentBackground(); // <-- Add this call after modelViewer is created
 
         loadGlb("EmmittingEroplano");
         modelViewer.getScene().setSkybox(null);
 
-        filamentView.setOnTouchListener((v, event) -> {
-            modelViewer.onTouchEvent(event);
-            return true;
-        });
+//        filamentView.setOnTouchListener((v, event) -> {
+//            modelViewer.onTouchEvent(event);
+//            return true;
+//        });
 
         startSimButton.setOnClickListener(v -> {
-            startSimButton.setVisibility(View.GONE);
-            poseStatusText.setVisibility(View.VISIBLE);
-            flipButton.setVisibility(View.VISIBLE);
+            startSimButton.setVisibility(android.view.View.GONE);
+            poseStatusText.setVisibility(android.view.View.VISIBLE);
+            flipButton.setVisibility(android.view.View.VISIBLE);
         });
 
         Intent intent2 = getIntent();
@@ -259,7 +281,6 @@ public class SimulationPage extends AppCompatActivity {
 
                 CameraSelector selector;
 
-                // ✅ Pick based on flag
                 if (isUsingFrontCamera) {
                     selector = CameraSelector.DEFAULT_FRONT_CAMERA;
                 } else {
@@ -272,9 +293,14 @@ public class SimulationPage extends AppCompatActivity {
                         .build();
                 imageAnalysis.setAnalyzer(ContextCompat.getMainExecutor(this), this::processImageProxy);
 
-                preview.setSurfaceProvider(previewView.getSurfaceProvider());
+                // Use TextureView for CameraX preview
+                preview.setSurfaceProvider(request -> {
+                    Surface surface = new Surface(previewView.getSurfaceTexture());
+                    request.provideSurface(surface, ContextCompat.getMainExecutor(this), result -> {
+                        surface.release();
+                    });
+                });
 
-                // Bind use cases
                 cameraProvider.bindToLifecycle(this, selector, preview, imageAnalysis);
 
             } catch (ExecutionException | InterruptedException e) {
@@ -1275,5 +1301,26 @@ public class SimulationPage extends AppCompatActivity {
                 Toast.makeText(this, "Camera permission denied", Toast.LENGTH_SHORT).show();
             }
         }
+    }
+
+    private void makeTransparentBackground() {
+        filamentView.setZOrderOnTop(true);
+        filamentView.setBackgroundColor(Color.TRANSPARENT);
+        filamentView.getHolder().setFormat(PixelFormat.TRANSLUCENT);
+
+        // Set Filament View blend mode to TRANSLUCENT
+        modelViewer.getView().setBlendMode(View.BlendMode.TRANSLUCENT);
+
+        // Remove skybox for full transparency
+        modelViewer.getScene().setSkybox(null);
+
+        // Set renderer clear options to transparent
+        Renderer.ClearOptions options = modelViewer.getRenderer().getClearOptions();
+        options.clear = true;
+        options.clearColor[0] = 0f;
+        options.clearColor[1] = 0f;
+        options.clearColor[2] = 0f;
+        options.clearColor[3] = 0f; // alpha
+        modelViewer.getRenderer().setClearOptions(options);
     }
 }
