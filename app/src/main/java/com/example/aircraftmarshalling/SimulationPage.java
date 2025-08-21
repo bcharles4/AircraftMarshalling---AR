@@ -134,17 +134,22 @@ public class SimulationPage extends AppCompatActivity {
 
         filamentView = findViewById(R.id.filamentView); // SurfaceView
 
+        // Make SurfaceView transparent and set Z order
+        filamentView.setZOrderOnTop(true);
+        filamentView.getHolder().setFormat(PixelFormat.TRANSLUCENT);
+
         choreographer = Choreographer.getInstance();
 
         Engine engine = Engine.create();
         UiHelper uiHelper = new UiHelper(UiHelper.ContextErrorPolicy.DONT_CHECK);
         uiHelper.setOpaque(false);
-        modelViewer = new ModelViewer(filamentView, engine, uiHelper, /* manipulator = */ null); // SurfaceView
+        modelViewer = new ModelViewer(filamentView, engine, uiHelper, /* manipulator = */ null);
+
+
 
         loadGlb("EmmittingEroplano");
         modelViewer.getScene().setSkybox(null);
 
-        // SurfaceView does not support onTouchListener directly, but we can still set it
         filamentView.setOnTouchListener((v, event) -> {
             modelViewer.onTouchEvent(event);
             return true;

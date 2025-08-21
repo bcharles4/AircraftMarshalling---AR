@@ -9,6 +9,13 @@
     android:background="@color/bg_color"
     tools:context=".SimulationPage">
 
+    <!-- SurfaceView for Filament 3D display, must be after PreviewView for correct Z-order -->
+    <SurfaceView
+        android:id="@+id/filamentView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@android:color/transparent" />
+
 
     <!-- CameraX PreviewView -->
     <androidx.camera.view.PreviewView
@@ -21,12 +28,7 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
-    <!-- Replace TextureView with SurfaceView for Filament 3D display -->
-    <SurfaceView
-        android:id="@+id/filamentView"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:background="@android:color/transparent" />
+
 
     <com.example.aircraftmarshalling.PoseOverlayView
         android:id="@+id/poseOverlayView"
