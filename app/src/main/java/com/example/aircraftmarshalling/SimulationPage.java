@@ -177,22 +177,16 @@ public class SimulationPage extends AppCompatActivity {
         uiHelper.setOpaque(false);
         modelViewer = new ModelViewer(filamentView, engine, uiHelper, /* manipulator = */ null);
 
-
-        makeTransparentBackground(); // <-- Add this call after modelViewer is created
-
-        loadGlb("ColoredAirplane");
-
-        addDefaultLights();
-
-//        filamentView.setOnTouchListener((v, event) -> {
-//            modelViewer.onTouchEvent(event);
-//            return true;
-//        });
+        makeTransparentBackground();
+        loadGlb("EroplanoLights");
+//        addDefaultLights();
 
         startSimButton.setOnClickListener(v -> {
             startSimButton.setVisibility(android.view.View.GONE);
             poseStatusText.setVisibility(android.view.View.VISIBLE);
             flipButton.setVisibility(android.view.View.VISIBLE);
+
+            filamentView.setVisibility(android.view.View.VISIBLE);
         });
 
         Intent intent2 = getIntent();
@@ -1432,12 +1426,12 @@ public class SimulationPage extends AppCompatActivity {
 
     // Turn left (negative Y rotation)
     public void turnLeft(int durationMs) {
-        rotateBy(-90f, durationMs); // rotate 90° left over duration
+        rotateBy(-30f, durationMs); // rotate 90° left over duration
     }
 
     // Turn right (positive Y rotation)
     public void turnRight(int durationMs) {
-        rotateBy(90f, durationMs);  // rotate 90° right over duration
+        rotateBy(30f, durationMs);  // rotate 90° right over duration
     }
 
 
