@@ -8,25 +8,30 @@
     android:background="@color/bg_color"
     tools:context=".MainActivity">
 
-    <!-- Logo ImageView -->
+    <!-- Logo ImageView (Responsive) -->
     <ImageView
         android:id="@+id/logo"
-        android:layout_width="350dp"
-        android:layout_height="300dp"
-        android:src="@drawable/am_logo"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:layout_margin="24dp"
         android:contentDescription="App Logo"
+        android:src="@drawable/am_logo"
+        android:scaleType="fitCenter"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintBottom_toTopOf="@id/start_button"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"/>
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintVertical_bias="0.3"
+        app:layout_constraintDimensionRatio="1:1" />
 
-    <!-- Start Button -->
+    <!-- Start Button (Responsive) -->
     <Button
         android:id="@+id/start_button"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:padding="15dp"
         android:text="START"
-        android:textSize="16sp"
+        android:textSize="17sp"
         android:textStyle="bold"
         android:backgroundTint="@color/white"
         android:textColor="@color/black"
@@ -34,6 +39,7 @@
         app:layout_constraintTop_toBottomOf="@id/logo"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintBottom_toBottomOf="parent"/>
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintVertical_bias="0.1"/>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

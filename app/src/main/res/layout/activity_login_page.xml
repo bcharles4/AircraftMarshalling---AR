@@ -18,23 +18,28 @@
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintStart_toStartOf="parent" />
 
-    <!-- Logo (Below the Back Button) -->
+
+    <!-- Logo (Centered, Responsive) -->
     <ImageView
         android:id="@+id/logo"
-        android:layout_width="350dp"
-        android:layout_height="300dp"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
         android:src="@drawable/am_logo"
         android:contentDescription="App Logo"
+        android:adjustViewBounds="true"
         app:layout_constraintTop_toBottomOf="@id/back_button"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintDimensionRatio="H,1:1"
+        app:layout_constraintWidth_percent="0.6"
+        app:layout_constraintHeight_percent="0.3"
         android:layout_marginTop="16dp"/>
 
-    <!-- Mobile Number Input -->
+    <!-- Email Input -->
     <EditText
         android:id="@+id/et_email"
-        android:layout_width="320dp"
-        android:layout_height="50dp"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
         android:hint="Enter your Email"
         android:inputType="textEmailAddress"
         android:padding="10dp"
@@ -44,13 +49,14 @@
         app:layout_constraintTop_toBottomOf="@id/logo"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintWidth_percent="0.8"
         android:layout_marginTop="30dp"/>
 
     <!-- Password Input -->
     <EditText
         android:id="@+id/et_password"
-        android:layout_width="320dp"
-        android:layout_height="50dp"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
         android:hint="Enter Password"
         android:textColorHint="@color/black"
         android:textColor="@color/black"
@@ -60,13 +66,14 @@
         app:layout_constraintTop_toBottomOf="@id/et_email"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintWidth_percent="0.8"
         android:layout_marginTop="16dp"/>
 
     <!-- Login Button -->
     <Button
         android:id="@+id/btn_login"
-        android:layout_width="120dp"
-        android:layout_height="50dp"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
         android:text="Login"
         android:textSize="18sp"
         android:backgroundTint="@color/white"
@@ -76,9 +83,10 @@
         app:layout_constraintTop_toBottomOf="@id/et_password"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintWidth_percent="0.5"
         android:layout_marginTop="30dp"/>
 
-    <!-- Register Link (Moved to Bottom) -->
+    <!-- Register Link (Bottom) -->
     <TextView
         android:id="@+id/tv_register"
         android:layout_width="wrap_content"
