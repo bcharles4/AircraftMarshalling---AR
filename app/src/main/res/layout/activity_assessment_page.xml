@@ -167,7 +167,7 @@
 
             <Button
                 android:id="@+id/submitButton"
-                android:layout_width="300dp"
+                android:layout_width="wrap_content"
                 android:backgroundTint="@color/bg_color"
                 android:textColor="@color/white"
                 android:layout_gravity="center"
