@@ -78,116 +78,385 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 app:columnCount="2"
-                app:rowCount="5"
+                app:rowCount="6"
                 app:useDefaultMargins="true"
                 app:alignmentMode="alignMargins">
 
-                <ImageView
-                    android:id="@+id/start_engine"
-                    android:layout_width="187dp"
-                    android:layout_height="100dp"
-                    android:scaleType="fitCenter"
-                    android:background="@drawable/image_container_bg"
-                    android:src="@drawable/s_start_engine"
-                    android:contentDescription="Signal" />
+                <!-- Start Engine -->
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    app:layout_columnWeight="1"
+                    android:gravity="center"
+                    android:padding="4dp">
 
-                <ImageView
-                    android:id="@+id/negative"
-                    android:layout_width="187dp"
-                    android:layout_height="100dp"
-                    android:scaleType="fitCenter"
-                    android:background="@drawable/image_container_bg"
-                    android:src="@drawable/s_negative_no_signal"
-                    android:contentDescription="Signal" />
-                <ImageView
-                    android:id="@+id/normal_stop"
-                    android:layout_width="187dp"
-                    android:layout_height="100dp"
-                    android:scaleType="fitCenter"
-                    android:background="@drawable/image_container_bg"
-                    android:src="@drawable/s_normal_stop"
-                    android:contentDescription="Signal" />
-                <ImageView
-                    android:id="@+id/emergency_stop"
-                    android:layout_width="187dp"
-                    android:layout_height="100dp"
-                    android:scaleType="fitCenter"
-                    android:background="@drawable/image_container_bg"
-                    android:src="@drawable/s_emergency_stop"
-                    android:contentDescription="Signal" />
-                <ImageView
-                    android:id="@+id/hold_position"
-                    android:layout_width="187dp"
-                    android:layout_height="100dp"
-                    android:scaleType="fitCenter"
-                    android:background="@drawable/image_container_bg"
-                    android:src="@drawable/s_hold_position"
-                    android:contentDescription="Signal" />
-                <ImageView
-                    android:id="@+id/pass_control"
-                    android:layout_width="187dp"
-                    android:layout_height="100dp"
-                    android:scaleType="fitCenter"
-                    android:background="@drawable/image_container_bg"
-                    android:src="@drawable/s_pass_control"
-                    android:contentDescription="Signal" />
-                <ImageView
-                    android:id="@+id/engine_on_fire"
-                    android:layout_width="187dp"
-                    android:layout_height="100dp"
-                    android:scaleType="fitCenter"
-                    android:background="@drawable/image_container_bg"
-                    android:src="@drawable/s_engine_on_fire"
-                    android:contentDescription="Signal" />
-                <ImageView
-                    android:id="@+id/brakes_on_fire"
-                    android:layout_width="187dp"
-                    android:layout_height="100dp"
-                    android:scaleType="fitCenter"
-                    android:background="@drawable/image_container_bg"
-                    android:src="@drawable/s_brakes_on_fire"
-                    android:contentDescription="Signal" />
-                <ImageView
-                    android:id="@+id/turn_right"
-                    android:layout_width="187dp"
-                    android:layout_height="100dp"
-                    android:scaleType="fitCenter"
-                    android:background="@drawable/image_container_bg"
-                    android:src="@drawable/s_turn_right"
-                    android:contentDescription="Signal" />
-                <ImageView
-                    android:id="@+id/turn_left"
-                    android:layout_width="187dp"
-                    android:layout_height="100dp"
-                    android:scaleType="fitCenter"
-                    android:background="@drawable/image_container_bg"
-                    android:src="@drawable/s_turn_left"
-                    android:contentDescription="Signal" />
-                <ImageView
-                    android:id="@+id/slow_down"
-                    android:layout_width="187dp"
-                    android:layout_height="100dp"
-                    android:scaleType="fitCenter"
-                    android:background="@drawable/image_container_bg"
-                    android:src="@drawable/s_slow_down"
-                    android:contentDescription="Signal" />
-                <ImageView
-                    android:id="@+id/shutoff_engine"
-                    android:layout_width="187dp"
-                    android:layout_height="100dp"
-                    android:scaleType="fitCenter"
-                    android:background="@drawable/image_container_bg"
-                    android:src="@drawable/s_shutoff_engine"
-                    android:contentDescription="Signal" />
+                    <ImageView
+                        android:id="@+id/start_engine"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:adjustViewBounds="true"
+                        android:scaleType="fitCenter"
+                        android:background="@drawable/image_container_bg"
+                        android:src="@drawable/s_start_engine"
+                        android:contentDescription="Start Engine" />
 
+                    <TextView
+                        android:id="@+id/start_engine_label"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Start Engine"
+                        android:textStyle="bold"
+                        android:textColor="@color/white"
+                        android:textSize="14sp"
+                        android:gravity="center"
+                        android:layout_marginTop="4dp"/>
+                </LinearLayout>
 
+                <!-- Negative -->
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    app:layout_columnWeight="1"
+                    android:gravity="center"
+                    android:padding="4dp">
 
+                    <ImageView
+                        android:id="@+id/negative"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:adjustViewBounds="true"
+                        android:scaleType="fitCenter"
+                        android:background="@drawable/image_container_bg"
+                        android:src="@drawable/s_negative_no_signal"
+                        android:contentDescription="Negative" />
 
+                    <TextView
+                        android:id="@+id/negative_label"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Negative"
+                        android:textStyle="bold"
+                        android:textColor="@color/white"
+                        android:textSize="14sp"
+                        android:gravity="center"
+                        android:layout_marginTop="4dp"/>
+                </LinearLayout>
 
+                <!-- Normal Stop -->
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    app:layout_columnWeight="1"
+                    android:gravity="center"
+                    android:padding="4dp">
 
+                    <ImageView
+                        android:id="@+id/normal_stop"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:adjustViewBounds="true"
+                        android:scaleType="fitCenter"
+                        android:background="@drawable/image_container_bg"
+                        android:src="@drawable/s_normal_stop"
+                        android:contentDescription="Normal Stop" />
 
+                    <TextView
+                        android:id="@+id/normal_stop_label"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Normal Stop"
+                        android:textStyle="bold"
+                        android:textColor="@color/white"
+                        android:textSize="14sp"
+                        android:gravity="center"
+                        android:layout_marginTop="4dp"/>
+                </LinearLayout>
+
+                <!-- Emergency Stop -->
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    app:layout_columnWeight="1"
+                    android:gravity="center"
+                    android:padding="4dp">
+
+                    <ImageView
+                        android:id="@+id/emergency_stop"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:adjustViewBounds="true"
+                        android:scaleType="fitCenter"
+                        android:background="@drawable/image_container_bg"
+                        android:src="@drawable/s_emergency_stop"
+                        android:contentDescription="Emergency Stop" />
+
+                    <TextView
+                        android:id="@+id/emergency_stop_label"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Emergency Stop"
+                        android:textStyle="bold"
+                        android:textColor="@color/white"
+                        android:textSize="14sp"
+                        android:gravity="center"
+                        android:layout_marginTop="4dp"/>
+                </LinearLayout>
+
+                <!-- Hold Position -->
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    app:layout_columnWeight="1"
+                    android:gravity="center"
+                    android:padding="4dp">
+
+                    <ImageView
+                        android:id="@+id/hold_position"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:adjustViewBounds="true"
+                        android:scaleType="fitCenter"
+                        android:background="@drawable/image_container_bg"
+                        android:src="@drawable/s_hold_position"
+                        android:contentDescription="Hold Position" />
+
+                    <TextView
+                        android:id="@+id/hold_position_label"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Hold Position"
+                        android:textStyle="bold"
+                        android:textColor="@color/white"
+                        android:textSize="14sp"
+                        android:gravity="center"
+                        android:layout_marginTop="4dp"/>
+                </LinearLayout>
+
+                <!-- Pass Control -->
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    app:layout_columnWeight="1"
+                    android:gravity="center"
+                    android:padding="4dp">
+
+                    <ImageView
+                        android:id="@+id/pass_control"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:adjustViewBounds="true"
+                        android:scaleType="fitCenter"
+                        android:background="@drawable/image_container_bg"
+                        android:src="@drawable/s_pass_control"
+                        android:contentDescription="Pass Control" />
+
+                    <TextView
+                        android:id="@+id/pass_control_label"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Pass Control"
+                        android:textStyle="bold"
+                        android:textColor="@color/white"
+                        android:textSize="14sp"
+                        android:gravity="center"
+                        android:layout_marginTop="4dp"/>
+                </LinearLayout>
+
+                <!-- Engine on Fire -->
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    app:layout_columnWeight="1"
+                    android:gravity="center"
+                    android:padding="4dp">
+
+                    <ImageView
+                        android:id="@+id/engine_on_fire"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:adjustViewBounds="true"
+                        android:scaleType="fitCenter"
+                        android:background="@drawable/image_container_bg"
+                        android:src="@drawable/s_engine_on_fire"
+                        android:contentDescription="Engine on Fire" />
+
+                    <TextView
+                        android:id="@+id/engine_on_fire_label"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Engine on Fire"
+                        android:textStyle="bold"
+                        android:textColor="@color/white"
+                        android:textSize="14sp"
+                        android:gravity="center"
+                        android:layout_marginTop="4dp"/>
+                </LinearLayout>
+
+                <!-- Brakes on Fire -->
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    app:layout_columnWeight="1"
+                    android:gravity="center"
+                    android:padding="4dp">
+
+                    <ImageView
+                        android:id="@+id/brakes_on_fire"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:adjustViewBounds="true"
+                        android:scaleType="fitCenter"
+                        android:background="@drawable/image_container_bg"
+                        android:src="@drawable/s_brakes_on_fire"
+                        android:contentDescription="Brakes on Fire" />
+
+                    <TextView
+                        android:id="@+id/brakes_on_fire_label"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Brakes on Fire"
+                        android:textStyle="bold"
+                        android:textColor="@color/white"
+                        android:textSize="14sp"
+                        android:gravity="center"
+                        android:layout_marginTop="4dp"/>
+                </LinearLayout>
+
+                <!-- Turn Right -->
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    app:layout_columnWeight="1"
+                    android:gravity="center"
+                    android:padding="4dp">
+
+                    <ImageView
+                        android:id="@+id/turn_right"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:adjustViewBounds="true"
+                        android:scaleType="fitCenter"
+                        android:background="@drawable/image_container_bg"
+                        android:src="@drawable/s_turn_right"
+                        android:contentDescription="Turn Right" />
+
+                    <TextView
+                        android:id="@+id/turn_right_label"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Turn Right"
+                        android:textStyle="bold"
+                        android:textColor="@color/white"
+                        android:textSize="14sp"
+                        android:gravity="center"
+                        android:layout_marginTop="4dp"/>
+                </LinearLayout>
+
+                <!-- Turn Left -->
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    app:layout_columnWeight="1"
+                    android:gravity="center"
+                    android:padding="4dp">
+
+                    <ImageView
+                        android:id="@+id/turn_left"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:adjustViewBounds="true"
+                        android:scaleType="fitCenter"
+                        android:background="@drawable/image_container_bg"
+                        android:src="@drawable/s_turn_left"
+                        android:contentDescription="Turn Left" />
+
+                    <TextView
+                        android:id="@+id/turn_left_label"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Turn Left"
+                        android:textStyle="bold"
+                        android:textColor="@color/white"
+                        android:textSize="14sp"
+                        android:gravity="center"
+                        android:layout_marginTop="4dp"/>
+                </LinearLayout>
+
+                <!-- Slow Down -->
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    app:layout_columnWeight="1"
+                    android:gravity="center"
+                    android:padding="4dp">
+
+                    <ImageView
+                        android:id="@+id/slow_down"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:adjustViewBounds="true"
+                        android:scaleType="fitCenter"
+                        android:background="@drawable/image_container_bg"
+                        android:src="@drawable/s_slow_down"
+                        android:contentDescription="Slow Down" />
+
+                    <TextView
+                        android:id="@+id/slow_down_label"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Slow Down"
+                        android:textStyle="bold"
+                        android:textColor="@color/white"
+                        android:textSize="14sp"
+                        android:gravity="center"
+                        android:layout_marginTop="4dp"/>
+                </LinearLayout>
+
+                <!-- Shutoff Engine -->
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    app:layout_columnWeight="1"
+                    android:gravity="center"
+                    android:padding="4dp">
+
+                    <ImageView
+                        android:id="@+id/shutoff_engine"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:adjustViewBounds="true"
+                        android:scaleType="fitCenter"
+                        android:background="@drawable/image_container_bg"
+                        android:src="@drawable/s_shutoff_engine"
+                        android:contentDescription="Shutoff Engine" />
+
+                    <TextView
+                        android:id="@+id/shutoff_engine_label"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Shutoff Engine"
+                        android:textStyle="bold"
+                        android:textColor="@color/white"
+                        android:textSize="14sp"
+                        android:gravity="center"
+                        android:layout_marginTop="4dp"/>
+                </LinearLayout>
 
             </androidx.gridlayout.widget.GridLayout>
+
+
 
 
         </LinearLayout>
