@@ -8,38 +8,40 @@
     android:background="@color/bg_color"
     tools:context=".ModuleViewer">
 
-
     <!-- Top Container with Logo -->
     <LinearLayout
         android:id="@+id/top_container"
-        android:layout_width="match_parent"
-        android:layout_height="100dp"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
         android:padding="8dp"
         android:orientation="horizontal"
         android:gravity="center"
         android:background="@color/bg_color"
-        app:layout_constraintTop_toTopOf="parent">
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
 
         <ImageView
             android:id="@+id/logo"
-            android:layout_width="150dp"
-            android:layout_height="match_parent"
+            android:layout_width="0dp"
+            android:layout_height="60dp"
+            android:layout_weight="1"
             android:contentDescription="App Logo"
             android:scaleType="fitCenter"
             android:src="@drawable/am_logo" />
     </LinearLayout>
 
-
+    <!-- Category Container -->
     <androidx.cardview.widget.CardView
         android:id="@+id/category_container"
-        android:layout_width="390dp"
-        android:layout_height="700dp"
-        android:layout_margin="20dp"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:layout_margin="16dp"
         app:cardCornerRadius="15dp"
         app:cardElevation="8dp"
         android:background="@drawable/bottom_nav_background"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/top_container"
+        app:layout_constraintBottom_toTopOf="@id/bottom_navigation"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
 
@@ -53,18 +55,19 @@
             <!-- Back Button -->
             <ImageButton
                 android:id="@+id/back_button"
-                android:layout_width="70dp"
-                android:layout_height="72dp"
+                android:layout_width="56dp"
+                android:layout_height="56dp"
                 android:background="@drawable/border"
-                android:scaleType="center"
+                android:scaleType="centerInside"
                 android:src="@drawable/back_bg" />
 
             <!-- Image Container -->
             <ImageView
                 android:id="@+id/item_image"
-                android:layout_marginTop="20dp"
+                android:layout_marginTop="16dp"
                 android:layout_width="match_parent"
-                android:layout_height="350dp"
+                android:layout_height="200dp"
+                android:layout_weight="1"
                 android:scaleType="centerCrop"
                 android:src="@drawable/empty_image"
                 android:background="@drawable/border"
@@ -76,7 +79,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="Sample Title"
-                android:textSize="27sp"
+                android:textSize="22sp"
                 android:textStyle="bold"
                 android:textColor="@android:color/black"
                 android:layout_marginTop="8dp" />
@@ -90,7 +93,7 @@
                 android:textColor="@android:color/darker_gray"
                 android:layout_marginTop="4dp" />
 
-            <!-- Spacer to push button down -->
+            <!-- Spacer -->
             <View
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
@@ -110,11 +113,9 @@
                 android:layout_marginBottom="8dp" />
         </LinearLayout>
 
-
     </androidx.cardview.widget.CardView>
 
-
-
+    <!-- Bottom Navigation -->
     <com.google.android.material.bottomnavigation.BottomNavigationView
         style="@style/BottomNavStyle"
         android:id="@+id/bottom_navigation"
