@@ -178,8 +178,8 @@ public class SimulationPage extends AppCompatActivity {
         modelViewer = new ModelViewer(filamentView, engine, uiHelper, /* manipulator = */ null);
 
         makeTransparentBackground();
-        loadGlb("EroplanoLights");
-//        addDefaultLights();
+        loadGlb("AirplaneWheels");
+        addDefaultLights();
 
         startSimButton.setOnClickListener(v -> {
             startSimButton.setVisibility(android.view.View.GONE);
@@ -1344,7 +1344,7 @@ public class SimulationPage extends AppCompatActivity {
         int sunlight = EntityManager.get().create();
         new LightManager.Builder(LightManager.Type.DIRECTIONAL)
                 .color(1.0f, 0.90f, 0.9f)       // slightly warm white
-                .intensity(1_800_000.0f)           // strong but not bleaching
+                .intensity(800_000.0f)           // strong but not bleaching
                 .direction(0.0f, -1.0f, -0.3f)
                 .castShadows(false)
                 .build(engine, sunlight);
@@ -1354,7 +1354,7 @@ public class SimulationPage extends AppCompatActivity {
         int frontLight = EntityManager.get().create();
         new LightManager.Builder(LightManager.Type.DIRECTIONAL)
                 .color(1.0f, .90f, 1.0f)
-                .intensity(1_500_000.0f)
+                .intensity(500_000.0f)
                 .direction(0.0f, 0.0f, -1.0f)
                 .castShadows(false)
                 .build(engine, frontLight);
@@ -1364,7 +1364,7 @@ public class SimulationPage extends AppCompatActivity {
         int bottomLight = EntityManager.get().create();
         new LightManager.Builder(LightManager.Type.DIRECTIONAL)
                 .color(0.9f, 0.90f, 1.0f)       // cooler tint
-                .intensity(1_350_000.0f)
+                .intensity(350_000.0f)
                 .direction(0.0f, 1.0f, 0.0f)    // pointing upward
                 .castShadows(false)
                 .build(engine, bottomLight);
@@ -1374,7 +1374,7 @@ public class SimulationPage extends AppCompatActivity {
         int ambient = EntityManager.get().create();
         new LightManager.Builder(LightManager.Type.POINT)
                 .color(1.0f, 1.0f, 1.0f)
-                .intensity(1_250_000.0f)          // global base fill
+                .intensity(250_000.0f)          // global base fill
                 .falloff(200.0f)               // make it very broad
                 .position(0.0f, 1.5f, 2.0f)    // slightly above/in front
                 .castShadows(false)
@@ -1424,14 +1424,14 @@ public class SimulationPage extends AppCompatActivity {
         animator.start();
     }
 
-    // Turn left (negative Y rotation)
+    // Turn left slightly
     public void turnLeft(int durationMs) {
-        rotateBy(-30f, durationMs); // rotate 90° left over duration
+        rotateBy(-5f, durationMs); // small steer left
     }
 
-    // Turn right (positive Y rotation)
+    // Turn right slightly
     public void turnRight(int durationMs) {
-        rotateBy(30f, durationMs);  // rotate 90° right over duration
+        rotateBy(5f, durationMs);  // small steer right
     }
 
 
