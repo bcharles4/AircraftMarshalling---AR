@@ -201,7 +201,12 @@ public class SimulationPage extends AppCompatActivity {
             if (itemId == R.id.nav_simulation) {
                 return true;
             } else if (itemId == R.id.nav_module) {
-                startActivity(new Intent(this, ModulePage.class));
+
+                Intent intent1 = new Intent(SimulationPage.this, AssessmentPage.class);
+                intent1.putExtra("name", getIntent().getStringExtra("name"));
+                intent1.putExtra("email", getIntent().getStringExtra("email"));
+                intent1.putExtra("phone", getIntent().getStringExtra("phone"));
+                startActivity(intent1);
                 overridePendingTransition(0, 0);
                 return true;
             } else if (itemId == R.id.nav_assessment) {

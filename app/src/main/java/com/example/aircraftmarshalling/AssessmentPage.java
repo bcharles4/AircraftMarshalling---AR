@@ -73,9 +73,11 @@ public class AssessmentPage extends AppCompatActivity {
                 startActivity(intent);
             }
             else if (itemId == R.id.nav_simulation) {
-
-                intent = new Intent(AssessmentPage.this, SimulationPage.class);
-                startActivity(intent);
+                Intent simulationtIntent = new Intent(AssessmentPage.this, SimulationPage.class);
+                simulationtIntent.putExtra("name", getIntent().getStringExtra("name"));
+                simulationtIntent.putExtra("email", getIntent().getStringExtra("email"));
+                simulationtIntent.putExtra("phone", getIntent().getStringExtra("phone"));
+                startActivity(simulationtIntent);
             }
             else {
                 return false; // No action for other items
@@ -127,6 +129,7 @@ public class AssessmentPage extends AppCompatActivity {
 
     private void checkAnswers() {
         int score = 0;
+        StringBuilder feedback = new StringBuilder();
 
         for (int i = 0; i < questions.length; i++) {
             int selectedId = questions[i].getCheckedRadioButtonId();
@@ -141,19 +144,41 @@ public class AssessmentPage extends AppCompatActivity {
 
             if (index == correctAnswers[i]) {
                 score++;
+            } else {
+                // Show correct answer in feedback
+                RadioButton correctBtn = (RadioButton) questions[i].getChildAt(correctAnswers[i]);
+                feedback.append("Q").append(i + 1).append(": Correct Answer is ")
+                        .append(correctBtn.getText().toString()).append("\n");
             }
         }
 
-        // Show result locally
+        // Build result message
+        String resultMessage = "You got " + score + " out of 8 correct.\n\n";
+        if (feedback.length() > 0) {
+            resultMessage += "Review:\n" + feedback.toString();
+        }
+
+        // Show result with Try Again & Done buttons
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("Assessment Result")
-                .setMessage("You got " + score + " out of 8 correct.")
-                .setPositiveButton("OK", null)
+                .setMessage(resultMessage)
+                .setPositiveButton("Try Again", (dialog, which) -> {
+                    // Reset all answers
+                    for (RadioGroup q : questions) {
+                        q.clearCheck();
+                    }
+                })
+                .setNegativeButton("Done", (dialog, which) -> {
+                    Intent intent = new Intent(AssessmentPage.this, ModulePage.class);
+                    startActivity(intent);
+                    finish();
+                })
                 .show();
 
         // Send score to backend
-        updateUserScore(name,  score);
+        updateUserScore(name, score);
     }
+
     private void updateUserScore(String name, int score) {
         String url = "https://aircraft-marshalling-f350337809da.herokuapp.com/api/users/score/" + name;
 
