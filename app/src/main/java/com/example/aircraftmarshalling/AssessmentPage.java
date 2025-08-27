@@ -66,8 +66,11 @@ public class AssessmentPage extends AppCompatActivity {
             int itemId = item.getItemId();
 
             if (itemId == R.id.nav_module) {
-                intent = new Intent(AssessmentPage.this, ModulePage.class);
-                startActivity(intent);
+                Intent simulationtIntent = new Intent(AssessmentPage.this, ModulePage.class);
+                simulationtIntent.putExtra("name", getIntent().getStringExtra("name"));
+                simulationtIntent.putExtra("email", getIntent().getStringExtra("email"));
+                simulationtIntent.putExtra("phone", getIntent().getStringExtra("phone"));
+                startActivity(simulationtIntent);
             } else if (itemId == R.id.nav_assessment) {
                 intent = new Intent(AssessmentPage.this, AssessmentPage.class);
                 startActivity(intent);
