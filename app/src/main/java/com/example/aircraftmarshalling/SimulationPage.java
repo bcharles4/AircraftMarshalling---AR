@@ -53,6 +53,10 @@ import com.google.android.filament.Scene;
 import com.google.android.filament.LightManager;
 import com.google.android.filament.EntityManager;
 import com.google.android.filament.gltfio.ResourceLoader;
+import com.google.android.filament.gltfio.FilamentAsset;
+import com.google.android.filament.gltfio.AssetLoader;
+import com.google.android.filament.gltfio.MaterialProvider;
+import com.google.android.filament.gltfio.UbershaderProvider;
 
 
 import com.google.common.util.concurrent.ListenableFuture;
@@ -117,6 +121,8 @@ public class SimulationPage extends AppCompatActivity {
     private SurfaceView filamentView; // Change from TextureView to SurfaceView
     private Choreographer choreographer;
     private ModelViewer modelViewer;
+    private AssetLoader assetLoader;
+    private ResourceLoader resourceLoader;
 
     private final Choreographer.FrameCallback frameCallback = new Choreographer.FrameCallback() {
         @Override
@@ -177,6 +183,11 @@ public class SimulationPage extends AppCompatActivity {
         uiHelper.setOpaque(false);
         modelViewer = new ModelViewer(filamentView, engine, uiHelper, /* manipulator = */ null);
 
+        UbershaderProvider materialProvider = new UbershaderProvider(engine);
+
+        assetLoader = new AssetLoader(engine, materialProvider, EntityManager.get());
+        resourceLoader = new ResourceLoader(engine);
+
         makeTransparentBackground();
         loadGlb("AirplaneWheels");
         addDefaultLights();
@@ -218,22 +229,23 @@ public class SimulationPage extends AppCompatActivity {
         });
 
     }
-
-    private void loadGlb(String name) {
+    private FilamentAsset loadGlb(String name) {
         ByteBuffer buffer = readAsset("models/" + name + ".glb");
-        modelViewer.loadModelGlb(buffer);
 
-        ResourceLoader resourceLoader = new ResourceLoader(modelViewer.getEngine());
-        resourceLoader.loadResources(modelViewer.getAsset());
+        FilamentAsset asset = assetLoader.createAsset(buffer);
+        if (asset == null) {
+            Log.e("SimulationPage", "Failed to load model: " + name);
+            return null;
+        }
 
+        resourceLoader.loadResources(asset);
 
-        // Scale model into unit cube around origin
-        modelViewer.transformToUnitCube(new Float3(0.0f, 0.0f, 0.0f));
+        // Attach to scene
+        modelViewer.getScene().addEntity(asset.getRoot());
 
-        // Scale down to 50%
-        int root = modelViewer.getAsset().getRoot();
+        // Scale down manually
         TransformManager tm = modelViewer.getEngine().getTransformManager();
-        int instance = tm.getInstance(root);
+        int instance = tm.getInstance(asset.getRoot());
         float scale = 0.7f;
         float[] matrix = {
                 scale, 0,     0,     0,
@@ -242,8 +254,37 @@ public class SimulationPage extends AppCompatActivity {
                 0,     0,     0,     1
         };
         tm.setTransform(instance, matrix);
-        modelViewer.getScene().setSkybox(null);
+
+        return asset;
     }
+
+
+
+//    private void loadGlb(String name) {
+//        ByteBuffer buffer = readAsset("models/" + name + ".glb");
+//        modelViewer.loadModelGlb(buffer);
+//
+//        ResourceLoader resourceLoader = new ResourceLoader(modelViewer.getEngine());
+//        resourceLoader.loadResources(modelViewer.getAsset());
+//
+//
+//        // Scale model into unit cube around origin
+//        modelViewer.transformToUnitCube(new Float3(0.0f, 0.0f, 0.0f));
+//
+//        // Scale down to 50%
+//        int root = modelViewer.getAsset().getRoot();
+//        TransformManager tm = modelViewer.getEngine().getTransformManager();
+//        int instance = tm.getInstance(root);
+//        float scale = 0.7f;
+//        float[] matrix = {
+//                scale, 0,     0,     0,
+//                0,     scale, 0,     0,
+//                0,     0,     scale, 0,
+//                0,     0,     0,     1
+//        };
+//        tm.setTransform(instance, matrix);
+//        modelViewer.getScene().setSkybox(null);
+//    }
 
 
     private ByteBuffer readAsset(String assetName) {
