@@ -192,6 +192,8 @@ public class SimulationPage extends AppCompatActivity {
         loadGlb("AirplaneWheels");
         addDefaultLights();
 
+
+
         startSimButton.setOnClickListener(v -> {
             startSimButton.setVisibility(android.view.View.GONE);
             poseStatusText.setVisibility(android.view.View.VISIBLE);
