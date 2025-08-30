@@ -144,7 +144,7 @@ public class SimulationPage extends AppCompatActivity {
     // --- Editable runway translation values (set here directly) ---
     // Change these values to move the runway in X, Y, Z
     private static float runwayTranslateX = 0f;
-    private static float runwayTranslateY = -0.03f;
+    private static float runwayTranslateY = -0.025f;
     private static float runwayTranslateZ = 0f;
 
     // --- Infinite slanted runway fields ---
@@ -156,16 +156,11 @@ public class SimulationPage extends AppCompatActivity {
     private static final float RUNWAY_SCALE = 0.001f;
     boolean infiniteRunwayStarted = false;
 
-    // Remove RunwaySegment and runwaySegments, just track the original runwayAsset's transform
-    // private static class RunwaySegment {
-    //     FilamentAsset asset;
-    //     float baseX, baseY, baseZ; // starting translation
-    //     int instance;
-    // }
+    int runwayMoved = 0;
 
-    // private final List<RunwaySegment> runwaySegments = new ArrayList<>();
+    // List to keep track of all runway clones (including the original)
+    private final List<FilamentAsset> runwayClones = new ArrayList<>();
 
-    // Remove all infinite runway logic from frameCallback
     private final Choreographer.FrameCallback frameCallback = new Choreographer.FrameCallback() {
         @Override
         public void doFrame(long frameTimeNanos) {
@@ -231,6 +226,7 @@ public class SimulationPage extends AppCompatActivity {
         makeTransparentBackground();
         loadGlb("AirplaneWheels");
         loadSecondGlb("LightRunway");
+        createRunwayClone(0, -0.285f, 1.475f);
         addDefaultLights();
 
         startSimButton.setOnClickListener(v -> {
@@ -277,20 +273,73 @@ public class SimulationPage extends AppCompatActivity {
 
         Button moveButton = findViewById(R.id.MoveButton);
         moveButton.setOnClickListener(v -> {
-            // Move the original runwayAsset by -0.01 on Y and 0.1 on Z for debug
-            if (runwayAsset != null) {
-                TransformManager tm = modelViewer.getEngine().getTransformManager();
-                int instance = tm.getInstance(runwayAsset.getRoot());
-                // Get current transform
-                float[] matrix = new float[16];
-                tm.getTransform(instance, matrix);
-                // Move
-                matrix[13] += 0.005f; // Y
-                matrix[14] -= 0.04f;   // Z
-                tm.setTransform(instance, matrix);
-            }
+            moveRunway();
         });
 
+    }
+
+    // Move all runway clones (including original) by -0.01 on Y and 0.1 on Z
+    private void moveRunway() {
+        // Move the original runwayAsset
+        if (runwayAsset != null) {
+            TransformManager tm = modelViewer.getEngine().getTransformManager();
+            int instance = tm.getInstance(runwayAsset.getRoot());
+            float[] matrix = new float[16];
+            tm.getTransform(instance, matrix);
+            matrix[13] += 0.005f;
+            matrix[14] -= 0.0288f;
+            tm.setTransform(instance, matrix);
+        }
+        // Move all clones
+        for (FilamentAsset clone : runwayClones) {
+            TransformManager tm = modelViewer.getEngine().getTransformManager();
+            int instance = tm.getInstance(clone.getRoot());
+            float[] matrix = new float[16];
+            tm.getTransform(instance, matrix);
+            matrix[13] += 0.005f;  // Y
+            matrix[14] -= 0.0288f;  // Z
+            tm.setTransform(instance, matrix);
+        }
+
+        runwayMoved += 1;
+
+        if (runwayMoved % 51 == 0) {
+            createRunwayClone(0, -0.289f, 1.475f);
+        }
+    }
+
+    // Callable function to create a new runway clone at a given y and z (and x) position
+    // The clone will have the same angles and rotation as the original
+    public FilamentAsset createRunwayClone(float x, float y, float z) {
+        if (runwayGlbBuffer == null) return null;
+        AssetLoader assetLoader = new AssetLoader(
+                modelViewer.getEngine(),
+                new UbershaderProvider(modelViewer.getEngine()),
+                EntityManager.get()
+        );
+        FilamentAsset cloneAsset = assetLoader.createAsset(runwayGlbBuffer.duplicate());
+        ResourceLoader resourceLoader = new ResourceLoader(modelViewer.getEngine());
+        resourceLoader.loadResources(cloneAsset);
+
+        int root = cloneAsset.getRoot();
+        TransformManager tm = modelViewer.getEngine().getTransformManager();
+        int instance = tm.getInstance(root);
+
+        // Use the same scale and angles as the original
+        float scale = RUNWAY_SCALE;
+        float angleX = RUNWAY_ANGLE_X;
+        float angleY = RUNWAY_ANGLE_Y;
+        float angleZ = RUNWAY_ANGLE_Z;
+
+        float[] matrix = createTransform(scale, angleX, angleY, angleZ);
+        matrix[12] = x;
+        matrix[13] = y;
+        matrix[14] = z;
+        tm.setTransform(instance, matrix);
+
+        modelViewer.getScene().addEntities(cloneAsset.getEntities());
+        runwayClones.add(cloneAsset);
+        return cloneAsset;
     }
 
     // Update loadGlb to allow airplane rotation (copy logic from loadSecondGlb)
@@ -358,7 +407,7 @@ public class SimulationPage extends AppCompatActivity {
         int instance = tm.getInstance(root);
 
         float scale = 0.001f;
-        float angleX = -7f;
+        float angleX = -10f;
         float angleY = 90f;
         float angleZ = 0f;
 
