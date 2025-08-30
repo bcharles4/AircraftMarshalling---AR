@@ -172,8 +172,13 @@ public class AssessmentPage extends AppCompatActivity {
                     }
                 })
                 .setNegativeButton("Done", (dialog, which) -> {
-                    Intent intent = new Intent(AssessmentPage.this, ModulePage.class);
-                    startActivity(intent);
+                    Intent intent1 = new Intent(AssessmentPage.this, ModulePage.class);
+                    intent1.putExtra("name", getIntent().getStringExtra("name")); // or pass stored variable
+                    intent1.putExtra("email", getIntent().getStringExtra("email"));
+                    intent1.putExtra("phone", getIntent().getStringExtra("phone"));
+                    intent1.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+
+                    startActivity(intent1);
                     finish();
                 })
                 .show();
