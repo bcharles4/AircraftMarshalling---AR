@@ -18,6 +18,7 @@ import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.camera.core.CameraSelector;
 import androidx.camera.core.ImageAnalysis;
@@ -30,6 +31,8 @@ import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
+import com.google.android.filament.Material;
+import com.google.android.filament.MaterialInstance;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.mlkit.vision.common.InputImage;
@@ -53,6 +56,10 @@ import com.google.android.filament.Scene;
 import com.google.android.filament.LightManager;
 import com.google.android.filament.EntityManager;
 import com.google.android.filament.gltfio.ResourceLoader;
+import com.google.android.filament.gltfio.AssetLoader;
+import com.google.android.filament.gltfio.FilamentAsset;
+import com.google.android.filament.gltfio.MaterialProvider;
+import com.google.android.filament.gltfio.UbershaderProvider;
 
 
 import com.google.common.util.concurrent.ListenableFuture;
@@ -118,11 +125,16 @@ public class SimulationPage extends AppCompatActivity {
     private Choreographer choreographer;
     private ModelViewer modelViewer;
 
+    // Add this field:
+    private MaterialProvider materialProvider;
+    private FilamentAsset runwayAsset;
+
     private final Choreographer.FrameCallback frameCallback = new Choreographer.FrameCallback() {
         @Override
-        public void doFrame(long currentTime) {
+        public void doFrame(long frameTimeNanos) {
+
+            // Schedule next frame
             choreographer.postFrameCallback(this);
-            modelViewer.render(currentTime);
         }
     };
 
@@ -177,8 +189,11 @@ public class SimulationPage extends AppCompatActivity {
         uiHelper.setOpaque(false);
         modelViewer = new ModelViewer(filamentView, engine, uiHelper, /* manipulator = */ null);
 
+        // No need to create a second MaterialProvider or AssetLoader, use modelViewer's
+
         makeTransparentBackground();
         loadGlb("AirplaneWheels");
+        loadSecondGlb("LightRunway");
         addDefaultLights();
 
         startSimButton.setOnClickListener(v -> {
@@ -245,6 +260,61 @@ public class SimulationPage extends AppCompatActivity {
         modelViewer.getScene().setSkybox(null);
     }
 
+    // New method to load the second GLB model
+    private void loadSecondGlb(String name) {
+        // Check if asset exists before loading
+        boolean assetExists = false;
+        try {
+            String[] assetList = getAssets().list("models");
+            if (assetList != null) {
+                for (String asset : assetList) {
+                    if (asset.equals(name + ".glb")) {
+                        assetExists = true;
+                        break;
+                    }
+                }
+            }
+        } catch (IOException e) {
+            Log.e("SimulationPage", "Error listing assets", e);
+        }
+        if (!assetExists) {
+            Log.w("SimulationPage", "Asset models/" + name + ".glb not found. Skipping loadSecondGlb.");
+            return;
+        }
+
+        ByteBuffer buffer = readAsset("models/" + name + ".glb");
+
+        // Use UbershaderProvider as the MaterialProvider implementation
+        MaterialProvider provider = new UbershaderProvider(modelViewer.getEngine());
+        AssetLoader assetLoader = new AssetLoader(
+                modelViewer.getEngine(),
+                provider,
+                EntityManager.get()
+        );
+        runwayAsset = assetLoader.createAsset(buffer);
+
+        ResourceLoader resourceLoader = new ResourceLoader(modelViewer.getEngine());
+        resourceLoader.loadResources(runwayAsset);
+
+        int root = runwayAsset.getRoot();
+        TransformManager tm = modelViewer.getEngine().getTransformManager();
+        int instance = tm.getInstance(root);
+
+        float scale = 0.001f;
+
+// Tilt runway away so it looks like it's going up toward a vanishing point
+        float angleX = -10f;  // tilt away (ladder going up / vanishing point)
+        float angleY = 90f;   // align bottom to face you
+        float angleZ = 0f;    // no twist
+
+        float[] matrix = createTransform(scale, angleX, angleY, angleZ);
+        // no translation yet
+        tm.setTransform(instance, matrix);
+
+        modelViewer.getScene().addEntities(runwayAsset.getEntities());
+    }
+
+
 
     private ByteBuffer readAsset(String assetName) {
         try (InputStream input = getAssets().open(assetName)) {
@@ -260,6 +330,45 @@ public class SimulationPage extends AppCompatActivity {
             throw new RuntimeException("Error reading asset " + assetName, e);
         }
     }
+
+    // Helper to create transform with scale + rotation (XYZ in degrees)
+    private float[] createTransform(float scale, float angleX, float angleY, float angleZ) {
+        double radX = Math.toRadians(angleX);
+        double radY = Math.toRadians(angleY);
+        double radZ = Math.toRadians(angleZ);
+
+        float cx = (float) Math.cos(radX);
+        float sx = (float) Math.sin(radX);
+        float cy = (float) Math.cos(radY);
+        float sy = (float) Math.sin(radY);
+        float cz = (float) Math.cos(radZ);
+        float sz = (float) Math.sin(radZ);
+
+        // Rotation order: Z * Y * X
+        float[] m = new float[16];
+        m[0] = cy * cz * scale;
+        m[1] = (sx * sy * cz - cx * sz) * scale;
+        m[2] = (cx * sy * cz + sx * sz) * scale;
+        m[3] = 0;
+
+        m[4] = cy * sz * scale;
+        m[5] = (sx * sy * sz + cx * cz) * scale;
+        m[6] = (cx * sy * sz - sx * cz) * scale;
+        m[7] = 0;
+
+        m[8] = -sy * scale;
+        m[9] = sx * cy * scale;
+        m[10] = cx * cy * scale;
+        m[11] = 0;
+
+        m[12] = 0;
+        m[13] = 0;
+        m[14] = 0;
+        m[15] = 1;
+
+        return m;
+    }
+
 
     @Override
     protected void onResume() {
@@ -1344,7 +1453,7 @@ public class SimulationPage extends AppCompatActivity {
         int sunlight = EntityManager.get().create();
         new LightManager.Builder(LightManager.Type.DIRECTIONAL)
                 .color(1.0f, 0.90f, 0.9f)       // slightly warm white
-                .intensity(800_000.0f)           // strong but not bleaching
+                .intensity(350_500.0f)           // strong but not bleaching
                 .direction(0.0f, -1.0f, -0.3f)
                 .castShadows(false)
                 .build(engine, sunlight);
@@ -1354,7 +1463,7 @@ public class SimulationPage extends AppCompatActivity {
         int frontLight = EntityManager.get().create();
         new LightManager.Builder(LightManager.Type.DIRECTIONAL)
                 .color(1.0f, .90f, 1.0f)
-                .intensity(500_000.0f)
+                .intensity(200_000.0f)
                 .direction(0.0f, 0.0f, -1.0f)
                 .castShadows(false)
                 .build(engine, frontLight);
