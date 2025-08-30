@@ -132,8 +132,8 @@ public class SimulationPage extends AppCompatActivity {
     private final Choreographer.FrameCallback frameCallback = new Choreographer.FrameCallback() {
         @Override
         public void doFrame(long frameTimeNanos) {
-
-            // Schedule next frame
+            // Ensure modelViewer.render() is called every frame
+            modelViewer.render(frameTimeNanos);
             choreographer.postFrameCallback(this);
         }
     };
