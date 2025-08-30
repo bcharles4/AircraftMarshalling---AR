@@ -144,7 +144,7 @@ public class SimulationPage extends AppCompatActivity {
     // --- Editable runway translation values (set here directly) ---
     // Change these values to move the runway in X, Y, Z
     private static float runwayTranslateX = 0f;
-    private static float runwayTranslateY = -0.01f;
+    private static float runwayTranslateY = -0.03f;
     private static float runwayTranslateZ = 0f;
 
     // --- Infinite slanted runway fields ---
@@ -156,13 +156,14 @@ public class SimulationPage extends AppCompatActivity {
     private static final float RUNWAY_SCALE = 0.001f;
     boolean infiniteRunwayStarted = false;
 
-    private static class RunwaySegment {
-        FilamentAsset asset;
-        float baseX, baseY, baseZ; // starting translation
-        int instance;
-    }
+    // Remove RunwaySegment and runwaySegments, just track the original runwayAsset's transform
+    // private static class RunwaySegment {
+    //     FilamentAsset asset;
+    //     float baseX, baseY, baseZ; // starting translation
+    //     int instance;
+    // }
 
-    private final List<RunwaySegment> runwaySegments = new ArrayList<>();
+    // private final List<RunwaySegment> runwaySegments = new ArrayList<>();
 
     // Remove all infinite runway logic from frameCallback
     private final Choreographer.FrameCallback frameCallback = new Choreographer.FrameCallback() {
@@ -239,8 +240,6 @@ public class SimulationPage extends AppCompatActivity {
 
             filamentView.setVisibility(android.view.View.VISIBLE);
 
-            // Start the infinite runway and camera movement here
-            startInfiniteRunway(); // <--- Ensure this is called here
         });
 
         Intent intent2 = getIntent();
@@ -278,19 +277,17 @@ public class SimulationPage extends AppCompatActivity {
 
         Button moveButton = findViewById(R.id.MoveButton);
         moveButton.setOnClickListener(v -> {
-            // Move only the first runway segment by -0.01 on Y and 0.1 on Z for debug
-            float moveY = -0.01f;
-            float moveZ = 0.1f;
-            if (!runwaySegments.isEmpty()) {
-                RunwaySegment seg = runwaySegments.get(0);
-                seg.baseY += moveY;
-                seg.baseZ += moveZ;
+            // Move the original runwayAsset by -0.01 on Y and 0.1 on Z for debug
+            if (runwayAsset != null) {
                 TransformManager tm = modelViewer.getEngine().getTransformManager();
-                float[] matrix = createTransform(RUNWAY_SCALE, RUNWAY_ANGLE_X, RUNWAY_ANGLE_Y, RUNWAY_ANGLE_Z);
-                matrix[12] = seg.baseX;
-                matrix[13] = seg.baseY;
-                matrix[14] = seg.baseZ;
-                tm.setTransform(seg.instance, matrix);
+                int instance = tm.getInstance(runwayAsset.getRoot());
+                // Get current transform
+                float[] matrix = new float[16];
+                tm.getTransform(instance, matrix);
+                // Move
+                matrix[13] += 0.005f; // Y
+                matrix[14] -= 0.04f;   // Z
+                tm.setTransform(instance, matrix);
             }
         });
 
@@ -345,7 +342,6 @@ public class SimulationPage extends AppCompatActivity {
         ByteBuffer buffer = readAsset("models/" + name + ".glb");
         runwayGlbBuffer = buffer.duplicate();
 
-        // Use UbershaderProvider as the MaterialProvider implementation
         MaterialProvider provider = new UbershaderProvider(modelViewer.getEngine());
         AssetLoader assetLoader = new AssetLoader(
                 modelViewer.getEngine(),
@@ -362,24 +358,18 @@ public class SimulationPage extends AppCompatActivity {
         int instance = tm.getInstance(root);
 
         float scale = 0.001f;
-        float angleX = -10f;
+        float angleX = -7f;
         float angleY = 90f;
         float angleZ = 0f;
 
         float[] matrix = createTransform(scale, angleX, angleY, angleZ);
-        // Set translation directly from the editable static variables above
         matrix[12] = runwayTranslateX;
         matrix[13] = runwayTranslateY;
         matrix[14] = runwayTranslateZ;
         tm.setTransform(instance, matrix);
 
         modelViewer.getScene().addEntities(runwayAsset.getEntities());
-        // Start infinite runway immediately after loading the model
-
-        if (!infiniteRunwayStarted) {
-            startInfiniteRunway();
-            infiniteRunwayStarted = true;
-        }
+        // No cloning, no list, no startInfiniteRunway
     }
 
 
@@ -1019,7 +1009,14 @@ public class SimulationPage extends AppCompatActivity {
         // --- RIGHT ARM UP ---
         boolean rightArmUp = (
                 rw.getPosition().y < re.getPosition().y && // wrist above elbow
-                        re.getPosition().y > rs.getPosition().y    // elbow below shoulder
+                        re.getPosition().y > rs.getPosition().y && // elbow below shoulder
+                        rw.getPosition().x < re.getPosition().x    // wrist left of elbow (X-axis)
+        );
+        // --- RIGHT ARM: down position ---
+        boolean rightArmDown = (
+                rw.getPosition().y > re.getPosition().y && // wrist below elbow
+                        re.getPosition().y > rs.getPosition().y && // elbow below shoulder
+                        rw.getPosition().x < re.getPosition().x    // wrist left of elbow (X-axis)
         );
 
         // --- Phase 1: right wrist to the RIGHT of right elbow ---
@@ -1615,62 +1612,5 @@ public class SimulationPage extends AppCompatActivity {
             matrix[14] = z;
             tm.setTransform(instance, matrix);
         }
-    }
-
-    // Only keep a single runway segment, no clones or automatic movement
-    private void startInfiniteRunway() {
-        // Remove any old segments
-        for (RunwaySegment seg : runwaySegments) {
-            removeRunwaySegment(seg);
-        }
-        runwaySegments.clear();
-
-        // Only add one segment at the initial position
-        addRunwaySegment(0, runwayTranslateY, 0);
-    }
-
-    // Add a segment at a specific position (in runway local space)
-    private void addRunwaySegment(float x, float y, float z) {
-        if (runwayGlbBuffer == null) return;
-        AssetLoader assetLoader = new AssetLoader(
-                modelViewer.getEngine(),
-                new UbershaderProvider(modelViewer.getEngine()),
-                EntityManager.get()
-        );
-        FilamentAsset segAsset = assetLoader.createAsset(runwayGlbBuffer.duplicate());
-        ResourceLoader resourceLoader = new ResourceLoader(modelViewer.getEngine());
-        resourceLoader.loadResources(segAsset);
-
-        int root = segAsset.getRoot();
-        TransformManager tm = modelViewer.getEngine().getTransformManager();
-        int instance = tm.getInstance(root);
-
-        float[] matrix = createTransform(RUNWAY_SCALE, RUNWAY_ANGLE_X, RUNWAY_ANGLE_Y, RUNWAY_ANGLE_Z);
-        matrix[12] = x;
-        matrix[13] = y;
-        matrix[14] = z;
-        tm.setTransform(instance, matrix);
-
-        modelViewer.getScene().addEntities(segAsset.getEntities());
-
-        RunwaySegment seg = new RunwaySegment();
-        seg.asset = segAsset;
-        seg.baseX = x;
-        seg.baseY = y;
-        seg.baseZ = z;
-        seg.instance = instance;
-        runwaySegments.add(seg);
-    }
-
-    // Move all segments, spawn new ones, and remove old ones as needed
-    private void updateInfiniteRunway() {
-        // No-op: movement is now only on button click, and no cloning
-        
-    }
-
-    private void removeRunwaySegment(RunwaySegment seg) {
-        modelViewer.getScene().removeEntities(seg.asset.getEntities());
-        seg.asset.releaseSourceData();
-        // Optionally: seg.asset.destroyAsset(); // if available
     }
 }
