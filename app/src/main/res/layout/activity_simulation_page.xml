@@ -112,6 +112,16 @@
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintVertical_bias="0.93" />
 
+    <Button
+        android:id="@+id/MoveButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Move"
+        app:layout_constraintBottom_toTopOf="@+id/startSim_button"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        android:visibility="gone"
+        app:layout_constraintTop_toTopOf="@+id/previewView" />
 
 
 </androidx.constraintlayout.widget.ConstraintLayout>

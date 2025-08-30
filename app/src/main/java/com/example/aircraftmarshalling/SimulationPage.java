@@ -18,8 +18,11 @@ import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.annotation.OptIn;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.camera.core.CameraSelector;
+import androidx.camera.core.ExperimentalGetImage;
 import androidx.camera.core.ImageAnalysis;
 import androidx.camera.core.ImageProxy;
 import androidx.camera.core.Preview;
@@ -30,6 +33,8 @@ import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
+import com.google.android.filament.Material;
+import com.google.android.filament.MaterialInstance;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.mlkit.vision.common.InputImage;
@@ -53,6 +58,10 @@ import com.google.android.filament.Scene;
 import com.google.android.filament.LightManager;
 import com.google.android.filament.EntityManager;
 import com.google.android.filament.gltfio.ResourceLoader;
+import com.google.android.filament.gltfio.AssetLoader;
+import com.google.android.filament.gltfio.FilamentAsset;
+import com.google.android.filament.gltfio.MaterialProvider;
+import com.google.android.filament.gltfio.UbershaderProvider;
 
 
 import com.google.common.util.concurrent.ListenableFuture;
@@ -63,6 +72,9 @@ import com.google.mlkit.vision.pose.PoseDetector;
 import com.google.mlkit.vision.pose.PoseLandmark;
 import com.google.mlkit.vision.pose.accurate.AccuratePoseDetectorOptions;
 
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
@@ -105,7 +117,7 @@ public class SimulationPage extends AppCompatActivity {
     }
 
     private static final int REQUEST_CAMERA_PERMISSION = 1001;
-    private  String name, email, phone;
+    private String name, email, phone;
     private TextureView previewView; // Change from PreviewView to TextureView
     private PoseOverlayView poseOverlayView;
     private TextView poseStatusText;
@@ -118,11 +130,47 @@ public class SimulationPage extends AppCompatActivity {
     private Choreographer choreographer;
     private ModelViewer modelViewer;
 
+    // Add this field:
+    private MaterialProvider materialProvider;
+    private FilamentAsset runwayAsset;
+
+    // New field to keep the original ByteBuffer for the runway GLB
+    private ByteBuffer runwayGlbBuffer;
+
+    // Camera position for infinite runway
+    private float cameraZ = 0f; // or cameraY if Filament uses Y as forward
+    private float cameraSpeed = 0.02f; // units per frame
+
+    // --- Editable runway translation values (set here directly) ---
+    // Change these values to move the runway in X, Y, Z
+    private static float runwayTranslateX = 0f;
+    private static float runwayTranslateY = -0.01f;
+    private static float runwayTranslateZ = 0f;
+
+    // --- Infinite slanted runway fields ---
+    private static final float RUNWAY_LENGTH = 2.0f; // adjust to match your model's length in Filament units
+    private static final float RUNWAY_SPEED = 0.1f; // movement per frame (adjust for speed)
+    private static final float RUNWAY_ANGLE_X = -10f; // must match angleX in loadSecondGlb
+    private static final float RUNWAY_ANGLE_Y = 90f;  // must match angleY in loadSecondGlb
+    private static final float RUNWAY_ANGLE_Z = 0f;
+    private static final float RUNWAY_SCALE = 0.001f;
+    boolean infiniteRunwayStarted = false;
+
+    private static class RunwaySegment {
+        FilamentAsset asset;
+        float baseX, baseY, baseZ; // starting translation
+        int instance;
+    }
+
+    private final List<RunwaySegment> runwaySegments = new ArrayList<>();
+
+    // Remove all infinite runway logic from frameCallback
     private final Choreographer.FrameCallback frameCallback = new Choreographer.FrameCallback() {
         @Override
-        public void doFrame(long currentTime) {
+        public void doFrame(long frameTimeNanos) {
+            // Only render, no movement or cloning per frame
+            modelViewer.render(frameTimeNanos);
             choreographer.postFrameCallback(this);
-            modelViewer.render(currentTime);
         }
     };
 
@@ -177,9 +225,12 @@ public class SimulationPage extends AppCompatActivity {
         uiHelper.setOpaque(false);
         modelViewer = new ModelViewer(filamentView, engine, uiHelper, /* manipulator = */ null);
 
+        // No need to create a second MaterialProvider or AssetLoader, use modelViewer's
+
         makeTransparentBackground();
-        loadGlb("EroplanoLights");
-//        addDefaultLights();
+        loadGlb("AirplaneWheels");
+        loadSecondGlb("LightRunway");
+        addDefaultLights();
 
         startSimButton.setOnClickListener(v -> {
             startSimButton.setVisibility(android.view.View.GONE);
@@ -187,6 +238,9 @@ public class SimulationPage extends AppCompatActivity {
             flipButton.setVisibility(android.view.View.VISIBLE);
 
             filamentView.setVisibility(android.view.View.VISIBLE);
+
+            // Start the infinite runway and camera movement here
+            startInfiniteRunway(); // <--- Ensure this is called here
         });
 
         Intent intent2 = getIntent();
@@ -222,8 +276,27 @@ public class SimulationPage extends AppCompatActivity {
             return false;
         });
 
+        Button moveButton = findViewById(R.id.MoveButton);
+        moveButton.setOnClickListener(v -> {
+            // Move only the first runway segment by -0.01 on Y and 0.1 on Z for debug
+            float moveY = -0.01f;
+            float moveZ = 0.1f;
+            if (!runwaySegments.isEmpty()) {
+                RunwaySegment seg = runwaySegments.get(0);
+                seg.baseY += moveY;
+                seg.baseZ += moveZ;
+                TransformManager tm = modelViewer.getEngine().getTransformManager();
+                float[] matrix = createTransform(RUNWAY_SCALE, RUNWAY_ANGLE_X, RUNWAY_ANGLE_Y, RUNWAY_ANGLE_Z);
+                matrix[12] = seg.baseX;
+                matrix[13] = seg.baseY;
+                matrix[14] = seg.baseZ;
+                tm.setTransform(seg.instance, matrix);
+            }
+        });
+
     }
 
+    // Update loadGlb to allow airplane rotation (copy logic from loadSecondGlb)
     private void loadGlb(String name) {
         ByteBuffer buffer = readAsset("models/" + name + ".glb");
         modelViewer.loadModelGlb(buffer);
@@ -231,23 +304,82 @@ public class SimulationPage extends AppCompatActivity {
         ResourceLoader resourceLoader = new ResourceLoader(modelViewer.getEngine());
         resourceLoader.loadResources(modelViewer.getAsset());
 
-
-        // Scale model into unit cube around origin
-        modelViewer.transformToUnitCube(new Float3(0.0f, 0.0f, 0.0f));
-
-        // Scale down to 50%
+        // Scale and rotate airplane model (same logic as runway)
         int root = modelViewer.getAsset().getRoot();
         TransformManager tm = modelViewer.getEngine().getTransformManager();
         int instance = tm.getInstance(root);
+
         float scale = 0.7f;
-        float[] matrix = {
-                scale, 0,     0,     0,
-                0,     scale, 0,     0,
-                0,     0,     scale, 0,
-                0,     0,     0,     1
-        };
+        float angleX = -5f;
+        float angleY = 0f;
+        float angleZ = 0f;
+
+        float[] matrix = createTransform(scale, angleX, angleY, angleZ);
         tm.setTransform(instance, matrix);
+
         modelViewer.getScene().setSkybox(null);
+    }
+
+    // New method to load the second GLB model
+    private void loadSecondGlb(String name) {
+        // Check if asset exists before loading
+        boolean assetExists = false;
+        try {
+            String[] assetList = getAssets().list("models");
+            if (assetList != null) {
+                for (String asset : assetList) {
+                    if (asset.equals(name + ".glb")) {
+                        assetExists = true;
+                        break;
+                    }
+                }
+            }
+        } catch (IOException e) {
+            Log.e("SimulationPage", "Error listing assets", e);
+        }
+        if (!assetExists) {
+            Log.w("SimulationPage", "Asset models/" + name + ".glb not found. Skipping loadSecondGlb.");
+            return;
+        }
+
+        ByteBuffer buffer = readAsset("models/" + name + ".glb");
+        runwayGlbBuffer = buffer.duplicate();
+
+        // Use UbershaderProvider as the MaterialProvider implementation
+        MaterialProvider provider = new UbershaderProvider(modelViewer.getEngine());
+        AssetLoader assetLoader = new AssetLoader(
+                modelViewer.getEngine(),
+                provider,
+                EntityManager.get()
+        );
+        runwayAsset = assetLoader.createAsset(buffer);
+
+        ResourceLoader resourceLoader = new ResourceLoader(modelViewer.getEngine());
+        resourceLoader.loadResources(runwayAsset);
+
+        int root = runwayAsset.getRoot();
+        TransformManager tm = modelViewer.getEngine().getTransformManager();
+        int instance = tm.getInstance(root);
+
+        float scale = 0.001f;
+        float angleX = -10f;
+        float angleY = 90f;
+        float angleZ = 0f;
+
+        float[] matrix = createTransform(scale, angleX, angleY, angleZ);
+        // Set translation directly from the editable static variables above
+        matrix[12] = runwayTranslateX;
+        matrix[13] = runwayTranslateY;
+        matrix[14] = runwayTranslateZ;
+        tm.setTransform(instance, matrix);
+
+        modelViewer.getScene().addEntities(runwayAsset.getEntities());
+        // Start infinite runway immediately after loading the model
+
+        if (!infiniteRunwayStarted) {
+            startInfiniteRunway();
+            infiniteRunwayStarted = true;
+        }
     }
 
 
@@ -266,15 +398,56 @@ public class SimulationPage extends AppCompatActivity {
         }
     }
 
+    // Helper to create transform with scale + rotation (XYZ in degrees)
+    private float[] createTransform(float scale, float angleX, float angleY, float angleZ) {
+        double radX = toRadians(angleX);
+        double radY = toRadians(angleY);
+        double radZ = toRadians(angleZ);
+
+        float cx = (float) cos(radX);
+        float sx = (float) sin(radX);
+        float cy = (float) cos(radY);
+        float sy = (float) sin(radY);
+        float cz = (float) cos(radZ);
+        float sz = (float) sin(radZ);
+
+        // Rotation order: Z * Y * X
+        float[] m = new float[16];
+        m[0] = cy * cz * scale;
+        m[1] = (sx * sy * cz - cx * sz) * scale;
+        m[2] = (cx * sy * cz + sx * sz) * scale;
+        m[3] = 0;
+
+        m[4] = cy * sz * scale;
+        m[5] = (sx * sy * sz + cx * cz) * scale;
+        m[6] = (cx * sy * sz - sx * cz) * scale;
+        m[7] = 0;
+
+        m[8] = -sy * scale;
+        m[9] = sx * cy * scale;
+        m[10] = cx * cy * scale;
+        m[11] = 0;
+
+        m[12] = 0;
+        m[13] = 0;
+        m[14] = 0;
+        m[15] = 1;
+
+        return m;
+    }
+
+
     @Override
     protected void onResume() {
         super.onResume();
+        // Ensure rendering starts when activity resumes
         choreographer.postFrameCallback(frameCallback);
     }
 
     @Override
     protected void onPause() {
         super.onPause();
+        // Ensure rendering stops when activity pauses
         choreographer.removeFrameCallback(frameCallback);
     }
 
@@ -327,10 +500,8 @@ public class SimulationPage extends AppCompatActivity {
     }
 
 
-
-
     private void processImageProxy(ImageProxy imageProxy) {
-        @androidx.annotation.OptIn(markerClass = androidx.camera.core.ExperimentalGetImage.class)
+        @OptIn(markerClass = ExperimentalGetImage.class)
         Image mediaImage = imageProxy.getImage();
 
         if (mediaImage != null) {
@@ -399,7 +570,7 @@ public class SimulationPage extends AppCompatActivity {
         boolean negativeSignal = detectNegative(leftShoulder, leftElbow, leftWrist, rightElbow, rightWrist);
         boolean normalStop = detectNormalStop(leftWrist, leftElbow, leftShoulder, rightWrist, rightElbow, rightShoulder); // ✅ New detector
         boolean emergencyStop = detectEmergencyStop(leftWrist, leftElbow, leftShoulder, rightWrist, rightElbow, rightShoulder); // ✅ New detector
-        boolean holdPosition = detectHoldPosition(leftShoulder, leftElbow,leftWrist, rightShoulder,rightElbow,rightWrist);
+        boolean holdPosition = detectHoldPosition(leftShoulder, leftElbow, leftWrist, rightShoulder, rightElbow, rightWrist);
         boolean turnRight = detectTurnRight(leftWrist, leftElbow, leftShoulder, rightWrist, rightElbow, rightShoulder);
 //        boolean chalkInstalled = detectChalkInstalled(leftShoulder, leftElbow, leftWrist, rightShoulder, rightElbow, rightWrist);
         boolean slowDown = detectSlowDown(leftShoulder, leftElbow, leftWrist, rightShoulder, rightElbow, rightWrist);
@@ -414,39 +585,29 @@ public class SimulationPage extends AppCompatActivity {
         if (elapsed >= 5) {
             if (normalStop) { // ✅ Added
                 lastDetectionResult = "Normal Stop";
-            }
-            else if (emergencyStop) { // ✅ Added
+            } else if (emergencyStop) { // ✅ Added
                 lastDetectionResult = "Emergency Stop";
-            }
-            else if (passControl) {
+            } else if (passControl) {
                 lastDetectionResult = "Pass Control";
-            }
-            else if (startEngine) {
+            } else if (startEngine) {
                 lastDetectionResult = "Start Engine";
-            }
-            else if (turnRight) {
+            } else if (turnRight) {
                 lastDetectionResult = "Turn Right";
 //                rotateAirplane(movableImage.getRotation() + 25f); // turn 10° right
                 turnRight(4000);
-            }
-            else if (turnLeft) {
+            } else if (turnLeft) {
                 lastDetectionResult = "Turn Left";
 //                rotateAirplane(movableImage.getRotation() - 25f); // turn 10° left
                 turnLeft(3000);
-            }
-            else if (engineFire) {
+            } else if (engineFire) {
                 lastDetectionResult = "Engine on Fire";
-            }
-            else if (brakeFire) {
+            } else if (brakeFire) {
                 lastDetectionResult = "Brakes on Fire";
-            }
-            else if (slowDown) {
+            } else if (slowDown) {
                 lastDetectionResult = "Slow Down";
-            }
-            else if (shutOffEngine) {
+            } else if (shutOffEngine) {
                 lastDetectionResult = "Shut Off Engine";
-            }
-            else if (negativeSignal) {
+            } else if (negativeSignal) {
                 lastDetectionResult = "Negative";
             }
 //            else if (chalkInstalled) {
@@ -464,7 +625,6 @@ public class SimulationPage extends AppCompatActivity {
             isCooldown = true;
             phaseStartTime = currentTime;
         }
-
 
 
         // Always update overlay
@@ -750,7 +910,7 @@ public class SimulationPage extends AppCompatActivity {
     }
 
 
-//    private boolean detectChalkInstalled(
+    //    private boolean detectChalkInstalled(
 //            PoseLandmark ls, PoseLandmark le, PoseLandmark lw, // left shoulder, elbow, wrist
 //            PoseLandmark rs, PoseLandmark re, PoseLandmark rw  // right shoulder, elbow, wrist
 //    ) {
@@ -982,7 +1142,6 @@ public class SimulationPage extends AppCompatActivity {
     }
 
 
-
     // Tracking phases for Engine on Fire
     private boolean engineOnFirePose1Done = false;
     private boolean engineOnFirePose2Done = false;
@@ -1198,10 +1357,6 @@ public class SimulationPage extends AppCompatActivity {
     }
 
 
-
-
-
-
     private void resetGestureTracking() {
         startEnginePose1Done = false;
         startEnginePose2Done = false;
@@ -1260,8 +1415,6 @@ public class SimulationPage extends AppCompatActivity {
     }
 
 
-
-
     // --- Overlay updater ---
     private void updateSkeletonOverlay(int imageWidth, int imageHeight,
                                        PoseLandmark lw, PoseLandmark rw,
@@ -1270,15 +1423,20 @@ public class SimulationPage extends AppCompatActivity {
         int viewWidth = previewView.getWidth();
         int viewHeight = previewView.getHeight();
         Map<String, PointF> posePoints = new HashMap<>();
-        if (lw != null) posePoints.put("LEFT_WRIST", mapPoint(lw, imageWidth, imageHeight, viewWidth, viewHeight));
-        if (rw != null) posePoints.put("RIGHT_WRIST", mapPoint(rw, imageWidth, imageHeight, viewWidth, viewHeight));
-        if (le != null) posePoints.put("LEFT_ELBOW", mapPoint(le, imageWidth, imageHeight, viewWidth, viewHeight));
-        if (re != null) posePoints.put("RIGHT_ELBOW", mapPoint(re, imageWidth, imageHeight, viewWidth, viewHeight));
-        if (ls != null) posePoints.put("LEFT_SHOULDER", mapPoint(ls, imageWidth, imageHeight, viewWidth, viewHeight));
-        if (rs != null) posePoints.put("RIGHT_SHOULDER", mapPoint(rs, imageWidth, imageHeight, viewWidth, viewHeight));
+        if (lw != null)
+            posePoints.put("LEFT_WRIST", mapPoint(lw, imageWidth, imageHeight, viewWidth, viewHeight));
+        if (rw != null)
+            posePoints.put("RIGHT_WRIST", mapPoint(rw, imageWidth, imageHeight, viewWidth, viewHeight));
+        if (le != null)
+            posePoints.put("LEFT_ELBOW", mapPoint(le, imageWidth, imageHeight, viewWidth, viewHeight));
+        if (re != null)
+            posePoints.put("RIGHT_ELBOW", mapPoint(re, imageWidth, imageHeight, viewWidth, viewHeight));
+        if (ls != null)
+            posePoints.put("LEFT_SHOULDER", mapPoint(ls, imageWidth, imageHeight, viewWidth, viewHeight));
+        if (rs != null)
+            posePoints.put("RIGHT_SHOULDER", mapPoint(rs, imageWidth, imageHeight, viewWidth, viewHeight));
         runOnUiThread(() -> poseOverlayView.updatePosePoints(posePoints));
     }
-
 
 
     private float distance(float x1, float y1, float x2, float y2) {
@@ -1297,7 +1455,6 @@ public class SimulationPage extends AppCompatActivity {
         rotateAnimator.setDuration(2500); // in milliseconds
         rotateAnimator.start();
     }
-
 
 
     private PointF mapPoint(PoseLandmark landmark, int imageWidth, int imageHeight, int viewWidth, int viewHeight) {
@@ -1349,7 +1506,7 @@ public class SimulationPage extends AppCompatActivity {
         int sunlight = EntityManager.get().create();
         new LightManager.Builder(LightManager.Type.DIRECTIONAL)
                 .color(1.0f, 0.90f, 0.9f)       // slightly warm white
-                .intensity(1_800_000.0f)           // strong but not bleaching
+                .intensity(350_500.0f)           // strong but not bleaching
                 .direction(0.0f, -1.0f, -0.3f)
                 .castShadows(false)
                 .build(engine, sunlight);
@@ -1359,7 +1516,7 @@ public class SimulationPage extends AppCompatActivity {
         int frontLight = EntityManager.get().create();
         new LightManager.Builder(LightManager.Type.DIRECTIONAL)
                 .color(1.0f, .90f, 1.0f)
-                .intensity(1_500_000.0f)
+                .intensity(200_000.0f)
                 .direction(0.0f, 0.0f, -1.0f)
                 .castShadows(false)
                 .build(engine, frontLight);
@@ -1369,7 +1526,7 @@ public class SimulationPage extends AppCompatActivity {
         int bottomLight = EntityManager.get().create();
         new LightManager.Builder(LightManager.Type.DIRECTIONAL)
                 .color(0.9f, 0.90f, 1.0f)       // cooler tint
-                .intensity(1_350_000.0f)
+                .intensity(350_000.0f)
                 .direction(0.0f, 1.0f, 0.0f)    // pointing upward
                 .castShadows(false)
                 .build(engine, bottomLight);
@@ -1379,7 +1536,7 @@ public class SimulationPage extends AppCompatActivity {
         int ambient = EntityManager.get().create();
         new LightManager.Builder(LightManager.Type.POINT)
                 .color(1.0f, 1.0f, 1.0f)
-                .intensity(1_250_000.0f)          // global base fill
+                .intensity(250_000.0f)          // global base fill
                 .falloff(200.0f)               // make it very broad
                 .position(0.0f, 1.5f, 2.0f)    // slightly above/in front
                 .castShadows(false)
@@ -1395,15 +1552,15 @@ public class SimulationPage extends AppCompatActivity {
         TransformManager tm = modelViewer.getEngine().getTransformManager();
         int instance = tm.getInstance(root);
 
-        float angle = (float) Math.toRadians(angleDegrees);
-        float cos = (float) Math.cos(angle);
-        float sin = (float) Math.sin(angle);
+        float angle = (float) toRadians(angleDegrees);
+        float cos = (float) cos(angle);
+        float sin = (float) sin(angle);
 
         float[] matrix = {
-                scale * cos,  0,  scale * -sin,  0,
-                0,            scale, 0,          0,
-                scale * sin,  0,  scale * cos,   0,
-                0,            0,    0,           1
+                scale * cos, 0, scale * -sin, 0,
+                0, scale, 0, 0,
+                scale * sin, 0, scale * cos, 0,
+                0, 0, 0, 1
         };
 
         tm.setTransform(instance, matrix);
@@ -1429,17 +1586,91 @@ public class SimulationPage extends AppCompatActivity {
         animator.start();
     }
 
-    // Turn left (negative Y rotation)
+    // Turn left slightly
     public void turnLeft(int durationMs) {
-        rotateBy(-30f, durationMs); // rotate 90° left over duration
+        rotateBy(-5f, durationMs); // small steer left
     }
 
-    // Turn right (positive Y rotation)
+    // Turn right slightly
     public void turnRight(int durationMs) {
-        rotateBy(30f, durationMs);  // rotate 90° right over duration
+        rotateBy(5f, durationMs);  // small steer right
     }
 
+    // --- Optional: public setters for moving the runway at runtime ---
+    public void setRunwayTranslation(float x, float y, float z) {
+        runwayTranslateX = x;
+        runwayTranslateY = y;
+        runwayTranslateZ = z;
+        if (runwayAsset != null) {
+            int root = runwayAsset.getRoot();
+            TransformManager tm = modelViewer.getEngine().getTransformManager();
+            int instance = tm.getInstance(root);
+            float scale = 0.001f;
+            float angleX = -10f;
+            float angleY = 90f;
+            float angleZ = 0f;
+            float[] matrix = createTransform(scale, angleX, angleY, angleZ);
+            matrix[12] = x;
+            matrix[13] = y;
+            matrix[14] = z;
+            tm.setTransform(instance, matrix);
+        }
+    }
 
+    // Only keep a single runway segment, no clones or automatic movement
+    private void startInfiniteRunway() {
+        // Remove any old segments
+        for (RunwaySegment seg : runwaySegments) {
+            removeRunwaySegment(seg);
+        }
+        runwaySegments.clear();
 
+        // Only add one segment at the initial position
+        addRunwaySegment(0, runwayTranslateY, 0);
+    }
 
+    // Add a segment at a specific position (in runway local space)
+    private void addRunwaySegment(float x, float y, float z) {
+        if (runwayGlbBuffer == null) return;
+        AssetLoader assetLoader = new AssetLoader(
+                modelViewer.getEngine(),
+                new UbershaderProvider(modelViewer.getEngine()),
+                EntityManager.get()
+        );
+        FilamentAsset segAsset = assetLoader.createAsset(runwayGlbBuffer.duplicate());
+        ResourceLoader resourceLoader = new ResourceLoader(modelViewer.getEngine());
+        resourceLoader.loadResources(segAsset);
+
+        int root = segAsset.getRoot();
+        TransformManager tm = modelViewer.getEngine().getTransformManager();
+        int instance = tm.getInstance(root);
+
+        float[] matrix = createTransform(RUNWAY_SCALE, RUNWAY_ANGLE_X, RUNWAY_ANGLE_Y, RUNWAY_ANGLE_Z);
+        matrix[12] = x;
+        matrix[13] = y;
+        matrix[14] = z;
+        tm.setTransform(instance, matrix);
+
+        modelViewer.getScene().addEntities(segAsset.getEntities());
+
+        RunwaySegment seg = new RunwaySegment();
+        seg.asset = segAsset;
+        seg.baseX = x;
+        seg.baseY = y;
+        seg.baseZ = z;
+        seg.instance = instance;
+        runwaySegments.add(seg);
+    }
+
+    // Move all segments, spawn new ones, and remove old ones as needed
+    private void updateInfiniteRunway() {
+        // No-op: movement is now only on button click, and no cloning
+        
+    }
+
+    private void removeRunwaySegment(RunwaySegment seg) {
+        modelViewer.getScene().removeEntities(seg.asset.getEntities());
+        seg.asset.releaseSourceData();
+        // Optionally: seg.asset.destroyAsset(); // if available
+    }
 }
