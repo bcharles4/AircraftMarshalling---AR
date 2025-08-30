@@ -109,6 +109,9 @@ import com.google.android.filament.TransformManager;
 import static java.lang.Math.cos;
 import static java.lang.Math.sin;
 import static java.lang.Math.toRadians;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 public class SimulationPage extends AppCompatActivity {
 
@@ -156,6 +159,7 @@ public class SimulationPage extends AppCompatActivity {
     private static final float RUNWAY_SCALE = 0.001f;
     boolean infiniteRunwayStarted = false;
 
+    boolean engineStarted = false;
     int runwayMoved = 0;
 
     // List to keep track of all runway clones (including the original)
@@ -277,9 +281,28 @@ public class SimulationPage extends AppCompatActivity {
         });
 
     }
+    private void callMoveRunway(int times) {
+        ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
+
+        final int[] count = {0};
+        Runnable task = () -> {
+            moveRunway();
+            count[0]++;
+            if (count[0] >= times) {
+                scheduler.shutdown();
+            }
+        };
+
+        // Run every 1 ms (minimum realistic delay on Android)
+        scheduler.scheduleWithFixedDelay(task, 0, 800, TimeUnit.MILLISECONDS);
+    }
 
     // Move all runway clones (including original) by -0.01 on Y and 0.1 on Z
     private void moveRunway() {
+        if (!engineStarted) {
+            return;
+        }
+
         // Move the original runwayAsset
         if (runwayAsset != null) {
             TransformManager tm = modelViewer.getEngine().getTransformManager();
@@ -624,37 +647,52 @@ public class SimulationPage extends AppCompatActivity {
         if (elapsed >= 5) {
             if (normalStop) { // ✅ Added
                 lastDetectionResult = "Normal Stop";
+                callMoveRunway(2);
+                engineStarted = false;
             } else if (emergencyStop) { // ✅ Added
                 lastDetectionResult = "Emergency Stop";
+                engineStarted = false;
             } else if (passControl) {
                 lastDetectionResult = "Pass Control";
+                callMoveRunway(4);
             } else if (startEngine) {
                 lastDetectionResult = "Start Engine";
+                engineStarted = true;
+                callMoveRunway(4);
             } else if (turnRight) {
                 lastDetectionResult = "Turn Right";
-//                rotateAirplane(movableImage.getRotation() + 25f); // turn 10° right
-                turnRight(4000);
+                if (engineStarted) {
+                    turnRight(4000);
+                }
             } else if (turnLeft) {
                 lastDetectionResult = "Turn Left";
-//                rotateAirplane(movableImage.getRotation() - 25f); // turn 10° left
-                turnLeft(3000);
+                if (engineStarted) {
+                    turnLeft(3000);
+                }
             } else if (engineFire) {
                 lastDetectionResult = "Engine on Fire";
+                callMoveRunway(4);
             } else if (brakeFire) {
                 lastDetectionResult = "Brakes on Fire";
+                callMoveRunway(4);
             } else if (slowDown) {
                 lastDetectionResult = "Slow Down";
+                callMoveRunway(2);
             } else if (shutOffEngine) {
                 lastDetectionResult = "Shut Off Engine";
+                engineStarted = false;
             } else if (negativeSignal) {
                 lastDetectionResult = "Negative";
+                callMoveRunway(4);
             }
 //            else if (chalkInstalled) {
 //                lastDetectionResult = "Chalk Installed";
 //            }
             else if (holdPosition) {
                 lastDetectionResult = "Hold Position";
+                callMoveRunway(4);
             } else {
+                callMoveRunway(4);
                 lastDetectionResult = "Unknown";
             }
 
