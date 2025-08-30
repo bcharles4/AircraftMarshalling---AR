@@ -135,24 +135,20 @@ public class SimulationPage extends AppCompatActivity {
     // New field to keep the original ByteBuffer for the runway GLB
     private ByteBuffer runwayGlbBuffer;
 
-    // Infinite runway state
-    private static class RunwaySegment {
-        FilamentAsset asset;
-        float zOffset;
-        int instance;
-    }
+    // Camera position for infinite runway
+    private float cameraZ = 0f; // or cameraY if Filament uses Y as forward
+    private float cameraSpeed = 0.02f; // units per frame
 
-    private final List<RunwaySegment> runwaySegments = new ArrayList<>();
-    private boolean infiniteRunwayActive = false;
-    private float runwaySpeed = 0.02f; // units per frame
-    private float runwayLength = 2.0f; // length of one runway segment in Filament units
-    private int maxSegments = 5;
+    // --- Editable runway translation values (set here directly) ---
+    // Change these values to move the runway in X, Y, Z
+    private static float runwayTranslateX = 0f;
+    private static float runwayTranslateY = 0f;
+    private static float runwayTranslateZ = 0f;
 
+    // Remove all infinite runway logic from frameCallback
     private final Choreographer.FrameCallback frameCallback = new Choreographer.FrameCallback() {
         @Override
         public void doFrame(long frameTimeNanos) {
-            // Ensure modelViewer.render() is called every frame
-            updateInfiniteRunway();
             modelViewer.render(frameTimeNanos);
             choreographer.postFrameCallback(this);
         }
@@ -222,6 +218,9 @@ public class SimulationPage extends AppCompatActivity {
             flipButton.setVisibility(android.view.View.VISIBLE);
 
             filamentView.setVisibility(android.view.View.VISIBLE);
+
+            // Start the infinite runway and camera movement here
+            // startInfiniteRunway();
         });
 
         Intent intent2 = getIntent();
@@ -254,6 +253,7 @@ public class SimulationPage extends AppCompatActivity {
 
     }
 
+    // Update loadGlb to allow airplane rotation (copy logic from loadSecondGlb)
     private void loadGlb(String name) {
         ByteBuffer buffer = readAsset("models/" + name + ".glb");
         modelViewer.loadModelGlb(buffer);
@@ -261,22 +261,19 @@ public class SimulationPage extends AppCompatActivity {
         ResourceLoader resourceLoader = new ResourceLoader(modelViewer.getEngine());
         resourceLoader.loadResources(modelViewer.getAsset());
 
-
-        // Scale model into unit cube around origin
-        modelViewer.transformToUnitCube(new Float3(0.0f, 0.0f, 0.0f));
-
-        // Scale down to 50%
+        // Scale and rotate airplane model (same logic as runway)
         int root = modelViewer.getAsset().getRoot();
         TransformManager tm = modelViewer.getEngine().getTransformManager();
         int instance = tm.getInstance(root);
+
         float scale = 0.7f;
-        float[] matrix = {
-                scale, 0, 0, 0,
-                0, scale, 0, 0,
-                0, 0, scale, 0,
-                0, 0, 0, 1
-        };
+        float angleX = -5f;
+        float angleY = 0f;
+        float angleZ = 0f;
+
+        float[] matrix = createTransform(scale, angleX, angleY, angleZ);
         tm.setTransform(instance, matrix);
+
         modelViewer.getScene().setSkybox(null);
     }
 
@@ -322,20 +319,18 @@ public class SimulationPage extends AppCompatActivity {
         int instance = tm.getInstance(root);
 
         float scale = 0.001f;
-
-// Tilt runway away so it looks like it's going up toward a vanishing point
-        float angleX = -10f;  // tilt away (ladder going up / vanishing point)
-        float angleY = 90f;   // align bottom to face you
-        float angleZ = 0f;    // no twist
+        float angleX = -10f;
+        float angleY = 90f;
+        float angleZ = 0f;
 
         float[] matrix = createTransform(scale, angleX, angleY, angleZ);
-        // no translation yet
+        // Set translation directly from the editable static variables above
+        matrix[12] = runwayTranslateX;
+        matrix[13] = runwayTranslateY;
+        matrix[14] = runwayTranslateZ;
         tm.setTransform(instance, matrix);
 
         modelViewer.getScene().addEntities(runwayAsset.getEntities());
-
-        
-        // startInfiniteRunway();
     }
 
 
@@ -396,12 +391,14 @@ public class SimulationPage extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
+        // Ensure rendering starts when activity resumes
         choreographer.postFrameCallback(frameCallback);
     }
 
     @Override
     protected void onPause() {
         super.onPause();
+        // Ensure rendering stops when activity pauses
         choreographer.removeFrameCallback(frameCallback);
     }
 
@@ -864,7 +861,7 @@ public class SimulationPage extends AppCompatActivity {
     }
 
 
-//    private boolean detectChalkInstalled(
+    //    private boolean detectChalkInstalled(
 //            PoseLandmark ls, PoseLandmark le, PoseLandmark lw, // left shoulder, elbow, wrist
 //            PoseLandmark rs, PoseLandmark re, PoseLandmark rw  // right shoulder, elbow, wrist
 //    ) {
@@ -1550,94 +1547,25 @@ public class SimulationPage extends AppCompatActivity {
         rotateBy(5f, durationMs);  // small steer right
     }
 
-    private void startInfiniteRunway() {
-        if (infiniteRunwayActive) return;
-        infiniteRunwayActive = true;
-        // Clear any old segments
-        for (RunwaySegment seg : runwaySegments) {
-            removeRunwaySegment(seg);
-        }
-        runwaySegments.clear();
-
-        // Spawn initial segments
-        for (int i = 0; i < maxSegments; i++) {
-            addRunwaySegment(i * runwayLength);
-        }
-    }
-
-    // Call this every frame to move and manage runway segments
-    private void updateInfiniteRunway() {
-        if (!infiniteRunwayActive) return;
-        Iterator<RunwaySegment> it = runwaySegments.iterator();
-        while (it.hasNext()) {
-            RunwaySegment seg = it.next();
-            seg.zOffset -= runwaySpeed;
-            updateRunwaySegmentTransform(seg);
-        }
-        // Remove segments that are too far behind
-        while (!runwaySegments.isEmpty() && runwaySegments.get(0).zOffset < -runwayLength) {
-            removeRunwaySegment(runwaySegments.get(0));
-            runwaySegments.remove(0);
-        }
-        // Add new segments at the front if needed
-        while (runwaySegments.size() < maxSegments) {
-            float lastZ = runwaySegments.isEmpty() ? 0 : runwaySegments.get(runwaySegments.size() - 1).zOffset;
-            addRunwaySegment(lastZ + runwayLength);
+    // --- Optional: public setters for moving the runway at runtime ---
+    public void setRunwayTranslation(float x, float y, float z) {
+        runwayTranslateX = x;
+        runwayTranslateY = y;
+        runwayTranslateZ = z;
+        if (runwayAsset != null) {
+            int root = runwayAsset.getRoot();
+            TransformManager tm = modelViewer.getEngine().getTransformManager();
+            int instance = tm.getInstance(root);
+            float scale = 0.001f;
+            float angleX = -10f;
+            float angleY = 90f;
+            float angleZ = 0f;
+            float[] matrix = createTransform(scale, angleX, angleY, angleZ);
+            matrix[12] = x;
+            matrix[13] = y;
+            matrix[14] = z;
+            tm.setTransform(instance, matrix);
         }
     }
 
-    private void addRunwaySegment(float zOffset) {
-        // Clone the runway asset (loadSecondGlb must have loaded a valid asset)
-        if (runwayAsset == null) return;
-        // Instead of getSourceAsset(), just use the same ByteBuffer as originally loaded
-        // You need to keep the original ByteBuffer for the runway GLB in a field
-
-        // Add this field at the top of the class:
-        // private ByteBuffer runwayGlbBuffer;
-
-        // In loadSecondGlb, after reading the buffer:
-        // runwayGlbBuffer = buffer;
-
-        if (runwayGlbBuffer == null) return;
-        AssetLoader assetLoader = new AssetLoader(
-                modelViewer.getEngine(),
-                new UbershaderProvider(modelViewer.getEngine()),
-                EntityManager.get()
-        );
-        FilamentAsset segAsset = assetLoader.createAsset(runwayGlbBuffer.duplicate());
-        ResourceLoader resourceLoader = new ResourceLoader(modelViewer.getEngine());
-        resourceLoader.loadResources(segAsset);
-
-        int root = segAsset.getRoot();
-        TransformManager tm = modelViewer.getEngine().getTransformManager();
-        int instance = tm.getInstance(root);
-
-        RunwaySegment seg = new RunwaySegment();
-        seg.asset = segAsset;
-        seg.zOffset = zOffset;
-        seg.instance = instance;
-        updateRunwaySegmentTransform(seg);
-
-        modelViewer.getScene().addEntities(segAsset.getEntities());
-        runwaySegments.add(seg);
-    }
-
-    private void updateRunwaySegmentTransform(RunwaySegment seg) {
-        // Use the same transform as loadSecondGlb, but translate in Z
-        float scale = 0.001f;
-        float angleX = -10f;
-        float angleY = 90f;
-        float angleZ = 0f;
-        float[] matrix = createTransform(scale, angleX, angleY, angleZ);
-        // Apply translation in Z (matrix[14] is the z translation)
-        matrix[14] = seg.zOffset;
-        TransformManager tm = modelViewer.getEngine().getTransformManager();
-        tm.setTransform(seg.instance, matrix);
-    }
-
-    private void removeRunwaySegment(RunwaySegment seg) {
-        modelViewer.getScene().removeEntities(seg.asset.getEntities());
-        seg.asset.releaseSourceData();
-        // Optionally: seg.asset.destroyAsset(); // if available in your Filament version
-    }
 }
