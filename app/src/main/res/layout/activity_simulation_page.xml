@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
+
 <androidx.constraintlayout.widget.ConstraintLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
@@ -24,6 +25,15 @@
 
     <!-- SurfaceView for Filament 3D display, must be after TextureView for correct Z-order -->
 
+    <androidx.media3.ui.PlayerView
+        android:id="@+id/airplaneOverlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@android:color/transparent"
+        android:keepScreenOn="true"
+        app:use_controller="false"
+        app:surface_type="texture_view"
+        />
 
     <SurfaceView
         android:id="@+id/filamentView"

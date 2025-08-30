@@ -62,4 +62,8 @@ dependencies {
     implementation("com.google.android.filament:filament-utils-android:1.57.1")
     implementation("com.google.android.filament:gltfio-android:1.57.1")
 
+    implementation("androidx.media3:media3-exoplayer:1.3.1")
+    implementation("androidx.media3:media3-exoplayer-dash:1.3.1")
+//    implementation("androidx.media3:media3-exoplayer:1.8.0")
+    implementation("androidx.media3:media3-ui:1.3.1")
 }

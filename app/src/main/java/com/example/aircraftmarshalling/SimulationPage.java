@@ -98,6 +98,15 @@ import static java.lang.Math.cos;
 import static java.lang.Math.sin;
 import static java.lang.Math.toRadians;
 
+
+import android.net.Uri;
+import android.os.Bundle;
+
+import androidx.media3.exoplayer.ExoPlayer;
+import androidx.media3.common.MediaItem;
+import androidx.media3.ui.PlayerView;
+import androidx.media3.common.util.UnstableApi;
+
 public class SimulationPage extends AppCompatActivity {
 
     static {
@@ -117,6 +126,7 @@ public class SimulationPage extends AppCompatActivity {
     private SurfaceView filamentView; // Change from TextureView to SurfaceView
     private Choreographer choreographer;
     private ModelViewer modelViewer;
+    private ExoPlayer player;
 
     private final Choreographer.FrameCallback frameCallback = new Choreographer.FrameCallback() {
         @Override
@@ -127,6 +137,7 @@ public class SimulationPage extends AppCompatActivity {
     };
 
     @Override
+    @UnstableApi
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         EdgeToEdge.enable(this);
@@ -181,13 +192,7 @@ public class SimulationPage extends AppCompatActivity {
         loadGlb("AirplaneWheels");
         addDefaultLights();
 
-        startSimButton.setOnClickListener(v -> {
-            startSimButton.setVisibility(android.view.View.GONE);
-            poseStatusText.setVisibility(android.view.View.VISIBLE);
-            flipButton.setVisibility(android.view.View.VISIBLE);
-
-            filamentView.setVisibility(android.view.View.VISIBLE);
-        });
+        initPlayer();
 
         Intent intent2 = getIntent();
         name = intent2.getStringExtra("name");
@@ -259,6 +264,29 @@ public class SimulationPage extends AppCompatActivity {
             Log.e("SimulationPage", "Error reading asset " + assetName, e);
             throw new RuntimeException("Error reading asset " + assetName, e);
         }
+    }
+
+    @UnstableApi
+    private void initPlayer() {
+        PlayerView playerView = findViewById(R.id.airplaneOverlay);
+
+        ExoPlayer player = new ExoPlayer.Builder(this).build();
+        playerView.setPlayer(player);
+
+        playerView.setBackgroundColor(Color.TRANSPARENT);
+
+        android.view.View videoSurface = playerView.getVideoSurfaceView();
+        if (videoSurface instanceof TextureView) {
+            ((TextureView) videoSurface).setOpaque(false); // Allow transparency
+        }
+
+        Uri videoUri = Uri.parse("android.resource://" + getPackageName() + "/" + R.raw.runway_animation);
+        MediaItem mediaItem = MediaItem.fromUri(videoUri);
+
+        player.setMediaItem(mediaItem);
+        player.setRepeatMode(ExoPlayer.REPEAT_MODE_ALL);
+        player.prepare();
+        player.play();
     }
 
     @Override
