@@ -19,8 +19,10 @@ import android.widget.Toast;
 import androidx.activity.EdgeToEdge;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.annotation.OptIn;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.camera.core.CameraSelector;
+import androidx.camera.core.ExperimentalGetImage;
 import androidx.camera.core.ImageAnalysis;
 import androidx.camera.core.ImageProxy;
 import androidx.camera.core.Preview;
@@ -142,13 +144,31 @@ public class SimulationPage extends AppCompatActivity {
     // --- Editable runway translation values (set here directly) ---
     // Change these values to move the runway in X, Y, Z
     private static float runwayTranslateX = 0f;
-    private static float runwayTranslateY = 0f;
+    private static float runwayTranslateY = -0.01f;
     private static float runwayTranslateZ = 0f;
+
+    // --- Infinite slanted runway fields ---
+    private static final float RUNWAY_LENGTH = 2.0f; // adjust to match your model's length in Filament units
+    private static final float RUNWAY_SPEED = 0.1f; // movement per frame (adjust for speed)
+    private static final float RUNWAY_ANGLE_X = -10f; // must match angleX in loadSecondGlb
+    private static final float RUNWAY_ANGLE_Y = 90f;  // must match angleY in loadSecondGlb
+    private static final float RUNWAY_ANGLE_Z = 0f;
+    private static final float RUNWAY_SCALE = 0.001f;
+    boolean infiniteRunwayStarted = false;
+
+    private static class RunwaySegment {
+        FilamentAsset asset;
+        float baseX, baseY, baseZ; // starting translation
+        int instance;
+    }
+
+    private final List<RunwaySegment> runwaySegments = new ArrayList<>();
 
     // Remove all infinite runway logic from frameCallback
     private final Choreographer.FrameCallback frameCallback = new Choreographer.FrameCallback() {
         @Override
         public void doFrame(long frameTimeNanos) {
+            // Only render, no movement or cloning per frame
             modelViewer.render(frameTimeNanos);
             choreographer.postFrameCallback(this);
         }
@@ -220,7 +240,7 @@ public class SimulationPage extends AppCompatActivity {
             filamentView.setVisibility(android.view.View.VISIBLE);
 
             // Start the infinite runway and camera movement here
-            // startInfiniteRunway();
+            startInfiniteRunway(); // <--- Ensure this is called here
         });
 
         Intent intent2 = getIntent();
@@ -249,6 +269,24 @@ public class SimulationPage extends AppCompatActivity {
             }
 
             return false;
+        });
+
+        Button moveButton = findViewById(R.id.MoveButton);
+        moveButton.setOnClickListener(v -> {
+            // Move only the first runway segment by -0.01 on Y and 0.1 on Z for debug
+            float moveY = -0.01f;
+            float moveZ = 0.1f;
+            if (!runwaySegments.isEmpty()) {
+                RunwaySegment seg = runwaySegments.get(0);
+                seg.baseY += moveY;
+                seg.baseZ += moveZ;
+                TransformManager tm = modelViewer.getEngine().getTransformManager();
+                float[] matrix = createTransform(RUNWAY_SCALE, RUNWAY_ANGLE_X, RUNWAY_ANGLE_Y, RUNWAY_ANGLE_Z);
+                matrix[12] = seg.baseX;
+                matrix[13] = seg.baseY;
+                matrix[14] = seg.baseZ;
+                tm.setTransform(seg.instance, matrix);
+            }
         });
 
     }
@@ -331,6 +369,12 @@ public class SimulationPage extends AppCompatActivity {
         tm.setTransform(instance, matrix);
 
         modelViewer.getScene().addEntities(runwayAsset.getEntities());
+        // Start infinite runway immediately after loading the model
+
+        if (!infiniteRunwayStarted) {
+            startInfiniteRunway();
+            infiniteRunwayStarted = true;
+        }
     }
 
 
@@ -351,16 +395,16 @@ public class SimulationPage extends AppCompatActivity {
 
     // Helper to create transform with scale + rotation (XYZ in degrees)
     private float[] createTransform(float scale, float angleX, float angleY, float angleZ) {
-        double radX = Math.toRadians(angleX);
-        double radY = Math.toRadians(angleY);
-        double radZ = Math.toRadians(angleZ);
+        double radX = toRadians(angleX);
+        double radY = toRadians(angleY);
+        double radZ = toRadians(angleZ);
 
-        float cx = (float) Math.cos(radX);
-        float sx = (float) Math.sin(radX);
-        float cy = (float) Math.cos(radY);
-        float sy = (float) Math.sin(radY);
-        float cz = (float) Math.cos(radZ);
-        float sz = (float) Math.sin(radZ);
+        float cx = (float) cos(radX);
+        float sx = (float) sin(radX);
+        float cy = (float) cos(radY);
+        float sy = (float) sin(radY);
+        float cz = (float) cos(radZ);
+        float sz = (float) sin(radZ);
 
         // Rotation order: Z * Y * X
         float[] m = new float[16];
@@ -452,7 +496,7 @@ public class SimulationPage extends AppCompatActivity {
 
 
     private void processImageProxy(ImageProxy imageProxy) {
-        @androidx.annotation.OptIn(markerClass = androidx.camera.core.ExperimentalGetImage.class)
+        @OptIn(markerClass = ExperimentalGetImage.class)
         Image mediaImage = imageProxy.getImage();
 
         if (mediaImage != null) {
@@ -1503,9 +1547,9 @@ public class SimulationPage extends AppCompatActivity {
         TransformManager tm = modelViewer.getEngine().getTransformManager();
         int instance = tm.getInstance(root);
 
-        float angle = (float) Math.toRadians(angleDegrees);
-        float cos = (float) Math.cos(angle);
-        float sin = (float) Math.sin(angle);
+        float angle = (float) toRadians(angleDegrees);
+        float cos = (float) cos(angle);
+        float sin = (float) sin(angle);
 
         float[] matrix = {
                 scale * cos, 0, scale * -sin, 0,
@@ -1568,4 +1612,60 @@ public class SimulationPage extends AppCompatActivity {
         }
     }
 
+    // Only keep a single runway segment, no clones or automatic movement
+    private void startInfiniteRunway() {
+        // Remove any old segments
+        for (RunwaySegment seg : runwaySegments) {
+            removeRunwaySegment(seg);
+        }
+        runwaySegments.clear();
+
+        // Only add one segment at the initial position
+        addRunwaySegment(0, runwayTranslateY, 0);
+    }
+
+    // Add a segment at a specific position (in runway local space)
+    private void addRunwaySegment(float x, float y, float z) {
+        if (runwayGlbBuffer == null) return;
+        AssetLoader assetLoader = new AssetLoader(
+                modelViewer.getEngine(),
+                new UbershaderProvider(modelViewer.getEngine()),
+                EntityManager.get()
+        );
+        FilamentAsset segAsset = assetLoader.createAsset(runwayGlbBuffer.duplicate());
+        ResourceLoader resourceLoader = new ResourceLoader(modelViewer.getEngine());
+        resourceLoader.loadResources(segAsset);
+
+        int root = segAsset.getRoot();
+        TransformManager tm = modelViewer.getEngine().getTransformManager();
+        int instance = tm.getInstance(root);
+
+        float[] matrix = createTransform(RUNWAY_SCALE, RUNWAY_ANGLE_X, RUNWAY_ANGLE_Y, RUNWAY_ANGLE_Z);
+        matrix[12] = x;
+        matrix[13] = y;
+        matrix[14] = z;
+        tm.setTransform(instance, matrix);
+
+        modelViewer.getScene().addEntities(segAsset.getEntities());
+
+        RunwaySegment seg = new RunwaySegment();
+        seg.asset = segAsset;
+        seg.baseX = x;
+        seg.baseY = y;
+        seg.baseZ = z;
+        seg.instance = instance;
+        runwaySegments.add(seg);
+    }
+
+    // Move all segments, spawn new ones, and remove old ones as needed
+    private void updateInfiniteRunway() {
+        // No-op: movement is now only on button click, and no cloning
+        
+    }
+
+    private void removeRunwaySegment(RunwaySegment seg) {
+        modelViewer.getScene().removeEntities(seg.asset.getEntities());
+        seg.asset.releaseSourceData();
+        // Optionally: seg.asset.destroyAsset(); // if available
+    }
 }
