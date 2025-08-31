@@ -34,6 +34,8 @@ public class LoginPage extends AppCompatActivity {
     private EditText etEmail, etPassword;
     private Button loginButton;
 
+    private TextView forgot_pass;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -72,7 +74,16 @@ public class LoginPage extends AppCompatActivity {
                 loginUser(email, password);
             }
         });
+
+        forgot_pass = findViewById(R.id.forgot_pass);
+
+        forgot_pass.setOnClickListener(v -> {
+            Intent intent = new Intent(LoginPage.this, ForgotPassword.class);
+            startActivity(intent);
+        });
+
     }
+
 
     private void loginUser(String email, String password) {
         JSONObject requestBody = new JSONObject();

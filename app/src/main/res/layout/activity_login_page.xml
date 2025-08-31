@@ -72,7 +72,7 @@
 
     <!-- Forgot Password Text -->
     <TextView
-        android:id="@+id/tv_forgot_password"
+        android:id="@+id/forgot_pass"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
@@ -80,8 +80,10 @@
         android:focusable="true"
         android:text="Forgot password?"
         android:textColor="@color/white"
-        app:layout_constraintEnd_toEndOf="@id/et_password"
-        app:layout_constraintTop_toBottomOf="@id/et_password" />
+        app:layout_constraintTop_toBottomOf="@id/et_password"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
 
     <!-- Login Button -->
     <Button

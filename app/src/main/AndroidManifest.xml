@@ -1,9 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
-
     <!-- Add this permission here -->
-    <uses-permission android:name="android.permission.CAMERA" />    
+    <uses-permission android:name="android.permission.CAMERA" />
 
     <application
         android:allowBackup="true"
@@ -16,6 +15,9 @@
         android:theme="@style/Theme.AircraftMarshalling"
         tools:targetApi="31">
         <activity
+            android:name=".ForgotPassword"
+            android:exported="false" />
+        <activity
             android:name=".AssessmentPage"
             android:exported="false" />
         <activity
@@ -27,8 +29,8 @@
         <activity
             android:name=".ModulePage"
             android:exported="false" />
-        <activity 
-            android:name=".SimulationPage" 
+        <activity
+            android:name=".SimulationPage"
             android:exported="false" />
         <activity
             android:name=".SimulationPage"

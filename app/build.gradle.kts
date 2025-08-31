@@ -62,4 +62,7 @@ dependencies {
     implementation("com.google.android.filament:filament-utils-android:1.57.1")
     implementation("com.google.android.filament:gltfio-android:1.57.1")
 
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
+
 }
