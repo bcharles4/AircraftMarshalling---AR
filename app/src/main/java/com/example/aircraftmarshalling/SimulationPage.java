@@ -378,7 +378,7 @@ public class SimulationPage extends AppCompatActivity {
         TransformManager tm = modelViewer.getEngine().getTransformManager();
         int instance = tm.getInstance(root);
 
-        float scale = 0.7f;
+        float scale = 0.8f;
         float angleX = -5f;
         float angleY = 0f;
         float angleZ = 0f;
