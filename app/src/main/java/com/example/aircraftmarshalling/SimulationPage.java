@@ -237,8 +237,8 @@ public class SimulationPage extends AppCompatActivity {
             startSimButton.setVisibility(android.view.View.GONE);
             poseStatusText.setVisibility(android.view.View.VISIBLE);
             flipButton.setVisibility(android.view.View.VISIBLE);
-            poseOverlayView.setVisibility(android.view.View.VISIBLE);
-//            filamentView.setVisibility(android.view.View.VISIBLE);
+//            poseOverlayView.setVisibility(android.view.View.VISIBLE);
+            filamentView.setVisibility(android.view.View.VISIBLE);
 
         });
 
@@ -609,7 +609,7 @@ public class SimulationPage extends AppCompatActivity {
                 isCooldown = false;
                 isDetectingAction = false;
             }
-            updateSkeletonOverlay(imageWidth, imageHeight, leftWrist, rightWrist, leftElbow, rightElbow, leftShoulder, rightShoulder);
+//            updateSkeletonOverlay(imageWidth, imageHeight, leftWrist, rightWrist, leftElbow, rightElbow, leftShoulder, rightShoulder);
             return;
         }
 
@@ -705,7 +705,7 @@ public class SimulationPage extends AppCompatActivity {
 
 
         // Always update overlay
-        updateSkeletonOverlay(imageWidth, imageHeight, leftWrist, rightWrist, leftElbow, rightElbow, leftShoulder, rightShoulder);
+//        updateSkeletonOverlay(imageWidth, imageHeight, leftWrist, rightWrist, leftElbow, rightElbow, leftShoulder, rightShoulder);
     }
 
 
