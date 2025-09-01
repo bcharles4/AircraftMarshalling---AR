@@ -237,8 +237,8 @@ public class SimulationPage extends AppCompatActivity {
             startSimButton.setVisibility(android.view.View.GONE);
             poseStatusText.setVisibility(android.view.View.VISIBLE);
             flipButton.setVisibility(android.view.View.VISIBLE);
-
-            filamentView.setVisibility(android.view.View.VISIBLE);
+            poseOverlayView.setVisibility(android.view.View.VISIBLE);
+//            filamentView.setVisibility(android.view.View.VISIBLE);
 
         });
 
@@ -609,7 +609,7 @@ public class SimulationPage extends AppCompatActivity {
                 isCooldown = false;
                 isDetectingAction = false;
             }
-//            updateSkeletonOverlay(imageWidth, imageHeight, leftWrist, rightWrist, leftElbow, rightElbow, leftShoulder, rightShoulder);
+            updateSkeletonOverlay(imageWidth, imageHeight, leftWrist, rightWrist, leftElbow, rightElbow, leftShoulder, rightShoulder);
             return;
         }
 
@@ -705,7 +705,7 @@ public class SimulationPage extends AppCompatActivity {
 
 
         // Always update overlay
-//        updateSkeletonOverlay(imageWidth, imageHeight, leftWrist, rightWrist, leftElbow, rightElbow, leftShoulder, rightShoulder);
+        updateSkeletonOverlay(imageWidth, imageHeight, leftWrist, rightWrist, leftElbow, rightElbow, leftShoulder, rightShoulder);
     }
 
 
@@ -1096,12 +1096,6 @@ public class SimulationPage extends AppCompatActivity {
         // --- RIGHT ARM UP ---
         boolean rightArmUp = (
                 rw.getPosition().y < re.getPosition().y && // wrist above elbow
-                        re.getPosition().y > rs.getPosition().y && // elbow below shoulder
-                        rw.getPosition().x < re.getPosition().x    // wrist left of elbow (X-axis)
-        );
-        // --- RIGHT ARM: down position ---
-        boolean rightArmDown = (
-                rw.getPosition().y > re.getPosition().y && // wrist below elbow
                         re.getPosition().y > rs.getPosition().y && // elbow below shoulder
                         rw.getPosition().x < re.getPosition().x    // wrist left of elbow (X-axis)
         );
