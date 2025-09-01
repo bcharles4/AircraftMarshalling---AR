@@ -628,19 +628,19 @@ public class SimulationPage extends AppCompatActivity {
         }
 
         // Run all detectors
-        boolean startEngine = detectStartEngine(leftWrist, leftElbow, leftShoulder, rightWrist, rightElbow, rightShoulder);
-        boolean negativeSignal = detectNegative(leftShoulder, leftElbow, leftWrist, rightElbow, rightWrist);
         boolean normalStop = detectNormalStop(leftWrist, leftElbow, leftShoulder, rightWrist, rightElbow, rightShoulder); // ✅ New detector
         boolean emergencyStop = detectEmergencyStop(leftWrist, leftElbow, leftShoulder, rightWrist, rightElbow, rightShoulder); // ✅ New detector
-        boolean holdPosition = detectHoldPosition(leftShoulder, leftElbow, leftWrist, rightShoulder, rightElbow, rightWrist);
-        boolean turnRight = detectTurnRight(leftWrist, leftElbow, leftShoulder, rightWrist, rightElbow, rightShoulder);
-//        boolean chalkInstalled = detectChalkInstalled(leftShoulder, leftElbow, leftWrist, rightShoulder, rightElbow, rightWrist);
-        boolean slowDown = detectSlowDown(leftShoulder, leftElbow, leftWrist, rightShoulder, rightElbow, rightWrist);
-        boolean shutOffEngine = detectShutOffEngine(leftShoulder, leftElbow, leftWrist, rightShoulder, rightElbow, rightWrist);
         boolean passControl = detectPassControl(leftWrist, leftElbow, leftShoulder, rightWrist, rightElbow, rightShoulder);
+        boolean startEngine = detectStartEngine(leftWrist, leftElbow, leftShoulder, rightWrist, rightElbow, rightShoulder);
+        boolean turnRight = detectTurnRight(leftWrist, leftElbow, leftShoulder, rightWrist, rightElbow, rightShoulder);
+        boolean turnLeft = detectTurnLeft(leftWrist, leftElbow, leftShoulder, rightWrist, rightElbow, rightShoulder);
         boolean engineFire = detectEngineOnFire(leftWrist, leftElbow, leftShoulder, rightWrist, rightElbow, rightShoulder);
         boolean brakeFire = detectBrakesOnFire(leftWrist, leftElbow, leftShoulder, rightWrist, rightElbow, rightShoulder);
-        boolean turnLeft = detectTurnLeft(leftWrist, leftElbow, leftShoulder, rightWrist, rightElbow, rightShoulder);
+        boolean slowDown = detectSlowDown(leftShoulder, leftElbow, leftWrist, rightShoulder, rightElbow, rightWrist);
+        boolean shutOffEngine = detectShutOffEngine(leftShoulder, leftElbow, leftWrist, rightShoulder, rightElbow, rightWrist);
+        boolean negativeSignal = detectNegative(leftShoulder, leftElbow, leftWrist, rightElbow, rightWrist);
+        // boolean chalkInstalled = detectChalkInstalled(leftShoulder, leftElbow, leftWrist, rightShoulder, rightElbow, rightWrist);
+        boolean holdPosition = detectHoldPosition(leftShoulder, leftElbow, leftWrist, rightShoulder, rightElbow, rightWrist);
 
 
         // End of 5-second detection
@@ -1097,14 +1097,14 @@ public class SimulationPage extends AppCompatActivity {
         boolean rightArmUp = (
                 rw.getPosition().y < re.getPosition().y && // wrist above elbow
                         re.getPosition().y > rs.getPosition().y && // elbow below shoulder
-                        rw.getPosition().x < re.getPosition().x    // wrist left of elbow (X-axis)
+                        rw.getPosition().x > rs.getPosition().x    // wrist left of elbow (X-axis)
         );
 
         // --- Phase 1: right wrist to the RIGHT of right elbow ---
         if (!shutOffEnginePose1Done &&
                 leftArmDown &&
                 rightArmUp &&
-                rw.getPosition().x > re.getPosition().x) { // wrist further right than elbow
+                rw.getPosition().x > rs.getPosition().x) { // wrist further right than elbow
 
             shutOffEnginePose1Done = true;
             shutOffEngineStartTime = now;
@@ -1115,8 +1115,7 @@ public class SimulationPage extends AppCompatActivity {
                 !shutOffEnginePose2Done &&
                 (now - shutOffEngineStartTime <= 3000) &&
                 leftArmDown &&
-                rightArmUp &&
-                rw.getPosition().x < re.getPosition().x) { // wrist further left than elbow
+                rw.getPosition().x < rs.getPosition().x) { // wrist further left than elbow
 
             shutOffEnginePose2Done = true;
         }
