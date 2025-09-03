@@ -743,10 +743,12 @@ public class SimulationPage extends AppCompatActivity {
         }
 
         long elapsed = (currentTime - phaseStartTime) / 1000;
-        long remainingDetection = 4 - elapsed;
+        long remainingDetection = 7 - elapsed;
 
         if (remainingDetection > 0) {
-            runOnUiThread(() -> poseStatusText.setText("Detecting Action...."));
+            runOnUiThread(() -> poseStatusText.setText(
+                    "Detecting Action... (" + remainingDetection + ")"
+            ));
         }
 
         // Run all detectors
@@ -771,18 +773,18 @@ public class SimulationPage extends AppCompatActivity {
         boolean slowDown = detectSlowDown(leftShoulder, leftElbow, leftWrist, rightShoulder, rightElbow, rightWrist);
         boolean shutOffEngine = detectShutOffEngine(leftShoulder, leftElbow, leftWrist, rightShoulder, rightElbow, rightWrist);
         boolean negativeSignal = detectNegative(leftShoulder, leftElbow, leftWrist, rightElbow, rightWrist);
-//        boolean chalkInstalled = detectChalkInstalled(leftShoulder, leftElbow, leftWrist, rightShoulder, rightElbow, rightWrist);
+        boolean chockInstalled = detectChockInstalled(leftShoulder, leftElbow, leftWrist, rightShoulder, rightElbow, rightWrist);
         boolean holdPosition = detectHoldPosition(leftShoulder, leftElbow, leftWrist, rightShoulder, rightElbow, rightWrist);
 
 
         // End of 7-second detection
         if (elapsed >= 7) {
-            if (normalStop) { // ✅ Added
+            if (normalStop) { //
                 lastDetectionResult = "Normal Stop";
                 callMoveRunway(2);
                 engineStarted = false;
             }
-//            else if (emergencyStop) { // ✅ Added
+//            else if (emergencyStop) { //
 //                lastDetectionResult = "Emergency Stop";
 //                engineStarted = false;
 //            }
@@ -843,9 +845,9 @@ public class SimulationPage extends AppCompatActivity {
                 lastDetectionResult = "Negative";
                 callMoveRunway(4);
             }
-//            else if (chalkInstalled) {
-//                lastDetectionResult = "Chalk Installed";
-//            }
+            else if (chockInstalled) {
+                lastDetectionResult = "Chock Installed";
+            }
             else if (holdPosition) {
                 lastDetectionResult = "Hold Position";
                 callMoveRunway(4);
@@ -1088,6 +1090,32 @@ public class SimulationPage extends AppCompatActivity {
                 emergencyStopPose2Done &&
                 emergencyStopPose3Done &&
                 emergencyStopPose4Done;
+    }
+
+    private boolean detectChockInstalled(
+            PoseLandmark ls, PoseLandmark le, PoseLandmark lw, // left shoulder, elbow, wrist
+            PoseLandmark rs, PoseLandmark re, PoseLandmark rw  // right shoulder, elbow, wrist
+    ) {
+        // --- Left Arm Up ---
+        boolean leftArmUp = (
+                lw.getPosition().y < le.getPosition().y && // wrist above elbow
+                        le.getPosition().y < ls.getPosition().y    // elbow above shoulder
+        );
+
+        // --- Right Arm Up ---
+        boolean rightArmUp = (
+                rw.getPosition().y < re.getPosition().y && // wrist above elbow
+                        re.getPosition().y < rs.getPosition().y    // elbow above shoulder
+        );
+
+        // --- Additional X-axis rules ---
+        boolean xPositionCheck = (
+                rw.getPosition().x < re.getPosition().x && // right wrist left of right elbow
+                        lw.getPosition().x > le.getPosition().x    // left wrist right of left elbow
+        );
+
+        // --- Static pose detection ---
+        return leftArmUp && rightArmUp && xPositionCheck;
     }
 
     private boolean detectHoldPosition(
