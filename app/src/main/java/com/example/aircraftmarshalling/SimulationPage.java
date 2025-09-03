@@ -140,10 +140,6 @@ public class SimulationPage extends AppCompatActivity {
     // New field to keep the original ByteBuffer for the runway GLB
     private ByteBuffer runwayGlbBuffer;
 
-    // Camera position for infinite runway
-    private float cameraZ = 0f; // or cameraY if Filament uses Y as forward
-    private float cameraSpeed = 0.02f; // units per frame
-
     // --- Editable runway translation values (set here directly) ---
     // Change these values to move the runway in X, Y, Z
     private static float runwayTranslateX = 0f;
@@ -165,9 +161,20 @@ public class SimulationPage extends AppCompatActivity {
     // List to keep track of all runway clones (including the original)
     private final List<FilamentAsset> runwayClones = new ArrayList<>();
 
+    private final java.util.List<Integer> fanEntities = new java.util.ArrayList<>();
+
+    // Base LOCAL transforms captured once after load (column-major 4x4)
+    private final java.util.Map<Integer, float[]> fanBaseLocal = new java.util.HashMap<>();
+
+    private boolean engineOn = false;
+    private float fanAngle = 0f;
+    private float fanSpeed = 0f;  // deg per frame (or scale by dt if you want)
+
+
     private final Choreographer.FrameCallback frameCallback = new Choreographer.FrameCallback() {
         @Override
         public void doFrame(long frameTimeNanos) {
+            updateFanRotation();
             // Only render, no movement or cloning per frame
             modelViewer.render(frameTimeNanos);
             choreographer.postFrameCallback(this);
@@ -228,7 +235,7 @@ public class SimulationPage extends AppCompatActivity {
         // No need to create a second MaterialProvider or AssetLoader, use modelViewer's
 
         makeTransparentBackground();
-        loadGlb("AirplaneWheels");
+        loadGlb("3DAirplane");
         loadSecondGlb("LightRunway");
         createRunwayClone(0, -0.285f, 1.475f);
         addDefaultLights();
@@ -277,7 +284,8 @@ public class SimulationPage extends AppCompatActivity {
 
         Button moveButton = findViewById(R.id.MoveButton);
         moveButton.setOnClickListener(v -> {
-            moveRunway();
+//            moveRunway();
+            engineOn = true;
         });
 
     }
@@ -365,6 +373,92 @@ public class SimulationPage extends AppCompatActivity {
         return cloneAsset;
     }
 
+
+
+    private void updateFanRotation() {
+        if (!engineOn || fanEntities.isEmpty()) return;
+
+        TransformManager tm = modelViewer.getEngine().getTransformManager();
+
+        // Spool-up
+        if (fanSpeed < 20f) fanSpeed += 0.2f;   // tune these numbers as you like
+
+        fanAngle += fanSpeed;
+        if (fanAngle >= 360f) fanAngle -= 360f;
+
+        // Build a column-major rotation around the correct axis.
+        // Try rotZ first; if your blades spin along X or Y, switch to rotX/rotY below.
+        float[] Rspin = makeRotationZColumnMajor((float) Math.toRadians(fanAngle));
+        // float[] Rspin = makeRotationYColumnMajor((float) Math.toRadians(fanAngle));
+        // float[] Rspin = makeRotationXColumnMajor((float) Math.toRadians(fanAngle));
+
+        for (int e : fanEntities) {
+            if (!tm.hasComponent(e)) continue;
+            int inst = tm.getInstance(e);
+
+            float[] base = fanBaseLocal.get(e);
+            if (base == null) continue;
+
+            // localNow = baseLocal * Rspin  (column-major multiply)
+            float[] localNow = mulCM(base, Rspin);
+            tm.setTransform(inst, localNow);
+        }
+    }
+
+    // Column-major rotation about Z
+    private static float[] makeRotationZColumnMajor(float a) {
+        float c = (float) Math.cos(a), s = (float) Math.sin(a);
+        return new float[] {
+                // col 0
+                c,  s,  0,  0,
+                // col 1
+                -s,  c,  0,  0,
+                // col 2
+                0,  0,  1,  0,
+                // col 3 (translation)
+                0,  0,  0,  1
+        };
+    }
+
+    private static float[] makeRotationYColumnMajor(float a) {
+        float c = (float) Math.cos(a), s = (float) Math.sin(a);
+        return new float[] {
+                c,  0, -s, 0,
+                0,  1,  0, 0,
+                s,  0,  c, 0,
+                0,  0,  0, 1
+        };
+    }
+
+    private static float[] makeRotationXColumnMajor(float a) {
+        float c = (float) Math.cos(a), s = (float) Math.sin(a);
+        return new float[] {
+                1,  0,  0, 0,
+                0,  c,  s, 0,
+                0, -s,  c, 0,
+                0,  0,  0, 1
+        };
+    }
+
+    // out = a * b  (all column-major)
+    private static float[] mulCM(float[] a, float[] b) {
+        float[] o = new float[16];
+        for (int row = 0; row < 4; row++) {
+            for (int col = 0; col < 4; col++) {
+                o[col*4 + row] =
+                        a[0*4 + row] * b[col*4 + 0] +
+                                a[1*4 + row] * b[col*4 + 1] +
+                                a[2*4 + row] * b[col*4 + 2] +
+                                a[3*4 + row] * b[col*4 + 3];
+            }
+        }
+        return o;
+    }
+
+
+
+
+
     // Update loadGlb to allow airplane rotation (copy logic from loadSecondGlb)
     private void loadGlb(String name) {
         ByteBuffer buffer = readAsset("models/" + name + ".glb");
@@ -373,9 +467,36 @@ public class SimulationPage extends AppCompatActivity {
         ResourceLoader resourceLoader = new ResourceLoader(modelViewer.getEngine());
         resourceLoader.loadResources(modelViewer.getAsset());
 
+        // Debug logs
+        FilamentUtils.logAssetHierarchy(modelViewer.getAsset());
+        FilamentUtils.logAllEntities(modelViewer.getAsset());
+        FilamentUtils.logAllEntitiesWithMaterials(modelViewer.getAsset());
+
+        // --- collect the blades you want to spin ---
+        fanEntities.clear();
+        fanBaseLocal.clear();
+
+        TransformManager tm = modelViewer.getEngine().getTransformManager();
+
+        int[] entities = modelViewer.getAsset().getEntities();
+        for (int e : entities) {
+            String n = modelViewer.getAsset().getName(e);
+            if (n == null) continue;
+
+            // match your latest names (add any aliases you use)
+            if ("FanBlades_Left".equals(n) || "FanBlades_Right".equals(n)
+                    || "Fans.002".equals(n) || "Fans.003".equals(n)) {
+                fanEntities.add(e);
+                int inst = tm.getInstance(e);
+                float[] base = new float[16];
+                tm.getTransform(inst, base);      // ← LOCAL transform relative to parent
+                fanBaseLocal.put(e, base);        // store for correct pivot rotation
+                android.util.Log.d("Fans", "Found: " + n + " id=" + e);
+            }
+        }
+
         // Scale and rotate airplane model (same logic as runway)
         int root = modelViewer.getAsset().getRoot();
-        TransformManager tm = modelViewer.getEngine().getTransformManager();
         int instance = tm.getInstance(root);
 
         float scale = 0.8f;
@@ -388,6 +509,7 @@ public class SimulationPage extends AppCompatActivity {
 
         modelViewer.getScene().setSkybox(null);
     }
+
 
     // New method to load the second GLB model
     private void loadSecondGlb(String name) {
@@ -601,7 +723,7 @@ public class SimulationPage extends AppCompatActivity {
         // --- Cooldown phase ---
         if (isCooldown) {
             long cooldownElapsed = (currentTime - phaseStartTime) / 1000;
-            long remainingCooldown = 5 - cooldownElapsed;
+            long remainingCooldown = 7 - cooldownElapsed;
 
             if (remainingCooldown > 0) {
                 runOnUiThread(() -> poseStatusText.setText(lastDetectionResult + " (" + remainingCooldown + ")"));
@@ -621,45 +743,71 @@ public class SimulationPage extends AppCompatActivity {
         }
 
         long elapsed = (currentTime - phaseStartTime) / 1000;
-        long remainingDetection = 4 - elapsed;
+        long remainingDetection = 7 - elapsed;
 
         if (remainingDetection > 0) {
-            runOnUiThread(() -> poseStatusText.setText("Detecting Action...."));
+            runOnUiThread(() -> poseStatusText.setText(
+                    "Detecting Action... (" + remainingDetection + ")"
+            ));
         }
 
         // Run all detectors
         boolean normalStop = detectNormalStop(leftWrist, leftElbow, leftShoulder, rightWrist, rightElbow, rightShoulder); // ✅ New detector
-        boolean emergencyStop = detectEmergencyStop(leftWrist, leftElbow, leftShoulder, rightWrist, rightElbow, rightShoulder); // ✅ New detector
-        boolean passControl = detectPassControl(leftWrist, leftElbow, leftShoulder, rightWrist, rightElbow, rightShoulder);
-        boolean startEngine = detectStartEngine(leftWrist, leftElbow, leftShoulder, rightWrist, rightElbow, rightShoulder);
+//        boolean emergencyStop = detectEmergencyStop(leftWrist, leftElbow, leftShoulder, rightWrist, rightElbow, rightShoulder); // ✅ New detector
+
+        boolean passControlL = detectPassControlL(leftWrist, leftElbow, leftShoulder, rightWrist, rightElbow, rightShoulder);
+        boolean passControlR = detectPassControlR(rightWrist, rightElbow, rightShoulder, leftWrist, leftElbow, leftShoulder);
+
+        boolean startEngineL = detectStartEngineL(leftWrist, leftElbow, leftShoulder, rightWrist, rightElbow, rightShoulder);
+        boolean startEngineR = detectStartEngineR(rightWrist, rightElbow, rightShoulder, leftWrist, leftElbow, leftShoulder);
+
         boolean turnRight = detectTurnRight(leftWrist, leftElbow, leftShoulder, rightWrist, rightElbow, rightShoulder);
         boolean turnLeft = detectTurnLeft(leftWrist, leftElbow, leftShoulder, rightWrist, rightElbow, rightShoulder);
-        boolean engineFire = detectEngineOnFire(leftWrist, leftElbow, leftShoulder, rightWrist, rightElbow, rightShoulder);
-        boolean brakeFire = detectBrakesOnFire(leftWrist, leftElbow, leftShoulder, rightWrist, rightElbow, rightShoulder);
+
+        boolean engineFireL = detectEngineOnFireL(leftWrist, leftElbow, leftShoulder, rightWrist, rightElbow, rightShoulder);
+        boolean engineFireR = detectEngineOnFireR(rightWrist, rightElbow, rightShoulder, leftWrist, leftElbow, leftShoulder);
+
+        boolean brakeFireL = detectBrakesOnFireL(leftWrist, leftElbow, leftShoulder, rightWrist, rightElbow, rightShoulder);
+        boolean brakeFireR = detectBrakesOnFireR(rightWrist, rightElbow, rightShoulder, leftWrist, leftElbow, leftShoulder);
+
         boolean slowDown = detectSlowDown(leftShoulder, leftElbow, leftWrist, rightShoulder, rightElbow, rightWrist);
         boolean shutOffEngine = detectShutOffEngine(leftShoulder, leftElbow, leftWrist, rightShoulder, rightElbow, rightWrist);
         boolean negativeSignal = detectNegative(leftShoulder, leftElbow, leftWrist, rightElbow, rightWrist);
-        // boolean chalkInstalled = detectChalkInstalled(leftShoulder, leftElbow, leftWrist, rightShoulder, rightElbow, rightWrist);
+        boolean chockInstalled = detectChockInstalled(leftShoulder, leftElbow, leftWrist, rightShoulder, rightElbow, rightWrist);
         boolean holdPosition = detectHoldPosition(leftShoulder, leftElbow, leftWrist, rightShoulder, rightElbow, rightWrist);
 
 
-        // End of 5-second detection
-        if (elapsed >= 5) {
-            if (normalStop) { // ✅ Added
+        // End of 7-second detection
+        if (elapsed >= 7) {
+            if (normalStop) { //
                 lastDetectionResult = "Normal Stop";
                 callMoveRunway(2);
                 engineStarted = false;
-            } else if (emergencyStop) { // ✅ Added
-                lastDetectionResult = "Emergency Stop";
-                engineStarted = false;
-            } else if (passControl) {
-                lastDetectionResult = "Pass Control";
+            }
+//            else if (emergencyStop) { //
+//                lastDetectionResult = "Emergency Stop";
+//                engineStarted = false;
+//            }
+            else if (passControlL) {
+                lastDetectionResult = "Pass Control to Left";
                 callMoveRunway(4);
-            } else if (startEngine) {
-                lastDetectionResult = "Start Engine";
+            }
+            else if (passControlR) {
+                lastDetectionResult = "Pass Control to Right";
+                callMoveRunway(4);
+            }
+
+            else if (startEngineL) {
+                lastDetectionResult = "Start Left Engine";
                 engineStarted = true;
                 callMoveRunway(4);
-            } else if (turnRight) {
+            }
+            else if (startEngineR) {
+                lastDetectionResult = "Start Right Engine";
+                engineStarted = true;
+                callMoveRunway(4);
+            }
+            else if (turnRight) {
                 lastDetectionResult = "Turn Right";
                 if (engineStarted) {
                     turnRight(4000);
@@ -669,25 +817,37 @@ public class SimulationPage extends AppCompatActivity {
                 if (engineStarted) {
                     turnLeft(3000);
                 }
-            } else if (engineFire) {
-                lastDetectionResult = "Engine on Fire";
+            }
+            else if (engineFireL) {
+                lastDetectionResult = "Left Engine on Fire";
                 callMoveRunway(4);
-            } else if (brakeFire) {
-                lastDetectionResult = "Brakes on Fire";
+            }
+            else if (engineFireR) {
+                lastDetectionResult = "Right Engine on Fire";
                 callMoveRunway(4);
-            } else if (slowDown) {
+            }
+            else if (brakeFireL) {
+                lastDetectionResult = "Left Brakes on Fire";
+                callMoveRunway(4);
+            }
+            else if (brakeFireR) {
+                lastDetectionResult = "Right Brakes on Fire";
+                callMoveRunway(4);
+            }
+            else if (slowDown) {
                 lastDetectionResult = "Slow Down";
                 callMoveRunway(2);
-            } else if (shutOffEngine) {
+            }
+            else if (shutOffEngine) {
                 lastDetectionResult = "Shut Off Engine";
                 engineStarted = false;
             } else if (negativeSignal) {
                 lastDetectionResult = "Negative";
                 callMoveRunway(4);
             }
-//            else if (chalkInstalled) {
-//                lastDetectionResult = "Chalk Installed";
-//            }
+            else if (chockInstalled) {
+                lastDetectionResult = "Chock Installed";
+            }
             else if (holdPosition) {
                 lastDetectionResult = "Hold Position";
                 callMoveRunway(4);
@@ -714,7 +874,7 @@ public class SimulationPage extends AppCompatActivity {
     private boolean startEnginePose2Done = false;
     private long startEngineStartTime = 0;
 
-    private boolean detectStartEngine(PoseLandmark lw, PoseLandmark le, PoseLandmark ls,
+    private boolean detectStartEngineL(PoseLandmark lw, PoseLandmark le, PoseLandmark ls,
                                       PoseLandmark rw, PoseLandmark re, PoseLandmark rs) {
 
         long now = System.currentTimeMillis();
@@ -752,6 +912,51 @@ public class SimulationPage extends AppCompatActivity {
 
         return startEnginePose1Done && startEnginePose2Done;
     }
+
+    // Tracking phases (mirrored version)
+    private boolean startEnginePose1Done2 = false;
+    private boolean startEnginePose2Done2 = false;
+    private long startEngineStartTime2 = 0;
+
+    private boolean detectStartEngineR(PoseLandmark rw, PoseLandmark re, PoseLandmark rs,
+                                        PoseLandmark lw, PoseLandmark le, PoseLandmark ls) {
+
+        long now = System.currentTimeMillis();
+
+        // Pose 1: right arm static "\" + left arm up, wrist right of elbow
+        boolean rightArmStatic2 = (
+                re.getPosition().x < rs.getPosition().x && // elbow is right of shoulder
+                        rw.getPosition().y < re.getPosition().y &&
+                        re.getPosition().y < rs.getPosition().y && // wrist above elbow
+                        rw.getPosition().x < re.getPosition().x    // wrist left of elbow
+        );
+        boolean leftArmUp2 = (
+                lw.getPosition().y < le.getPosition().y
+        );
+
+        if (!startEnginePose1Done2 &&
+                rightArmStatic2 &&
+                leftArmUp2 &&
+                lw.getPosition().x > le.getPosition().x) {
+
+            startEnginePose1Done2 = true;
+            startEngineStartTime2 = now;
+        }
+
+        // Pose 2: right arm still static + left arm still up, wrist left of elbow
+        if (startEnginePose1Done2 &&
+                !startEnginePose2Done2 &&
+                (now - startEngineStartTime2 <= 3000) && // within 3 seconds
+                rightArmStatic2 &&
+                leftArmUp2 &&
+                lw.getPosition().x < le.getPosition().x) {
+
+            startEnginePose2Done2 = true;
+        }
+
+        return startEnginePose1Done2 && startEnginePose2Done2;
+    }
+
 
     private boolean detectNegative(PoseLandmark ls, PoseLandmark le, PoseLandmark lw,
                                    PoseLandmark re, PoseLandmark rw) {
@@ -885,6 +1090,32 @@ public class SimulationPage extends AppCompatActivity {
                 emergencyStopPose2Done &&
                 emergencyStopPose3Done &&
                 emergencyStopPose4Done;
+    }
+
+    private boolean detectChockInstalled(
+            PoseLandmark ls, PoseLandmark le, PoseLandmark lw, // left shoulder, elbow, wrist
+            PoseLandmark rs, PoseLandmark re, PoseLandmark rw  // right shoulder, elbow, wrist
+    ) {
+        // --- Left Arm Up ---
+        boolean leftArmUp = (
+                lw.getPosition().y < le.getPosition().y && // wrist above elbow
+                        le.getPosition().y < ls.getPosition().y    // elbow above shoulder
+        );
+
+        // --- Right Arm Up ---
+        boolean rightArmUp = (
+                rw.getPosition().y < re.getPosition().y && // wrist above elbow
+                        re.getPosition().y < rs.getPosition().y    // elbow above shoulder
+        );
+
+        // --- Additional X-axis rules ---
+        boolean xPositionCheck = (
+                rw.getPosition().x < re.getPosition().x && // right wrist left of right elbow
+                        lw.getPosition().x > le.getPosition().x    // left wrist right of left elbow
+        );
+
+        // --- Static pose detection ---
+        return leftArmUp && rightArmUp && xPositionCheck;
     }
 
     private boolean detectHoldPosition(
@@ -1132,7 +1363,7 @@ public class SimulationPage extends AppCompatActivity {
     private boolean passControlPose6Done = false;
     private long passControlStartTime = 0;
 
-    private boolean detectPassControl(
+    private boolean detectPassControlL(
             PoseLandmark lw, PoseLandmark le, PoseLandmark ls, // left wrist, elbow, shoulder
             PoseLandmark rw, PoseLandmark re, PoseLandmark rs  // right wrist, elbow, shoulder
     ) {
@@ -1218,6 +1449,101 @@ public class SimulationPage extends AppCompatActivity {
                 passControlPose6Done;
     }
 
+    // Tracking phases for Pass Control (mirrored version)
+    private boolean passControlPose1Done2 = false;
+    private boolean passControlPose2Done2 = false;
+    private boolean passControlPose3Done2 = false;
+    private boolean passControlPose4Done2 = false;
+    private boolean passControlPose5Done2 = false;
+    private boolean passControlPose6Done2 = false;
+    private long passControlStartTime2 = 0;
+
+    private boolean detectPassControlR(
+            PoseLandmark rw, PoseLandmark re, PoseLandmark rs, // right wrist, elbow, shoulder
+            PoseLandmark lw, PoseLandmark le, PoseLandmark ls  // left wrist, elbow, shoulder
+    ) {
+        long now = System.currentTimeMillis();
+
+        boolean rightArmRightAngle2 = (
+                rs.getPosition().x > re.getPosition().x && // shoulder X > elbow X
+                        re.getPosition().x > rw.getPosition().x    // elbow X > wrist X
+        );
+
+        // --- LEFT ARM: raised up ---
+        boolean leftArmUp2 = (
+                lw.getPosition().y < le.getPosition().y    // wrist above elbow
+        );
+
+        // --- Frame 1: wrist RIGHT of elbow ---
+        if (!passControlPose1Done2 &&
+                rightArmRightAngle2 &&
+                leftArmUp2 &&
+                lw.getPosition().x > le.getPosition().x) {
+
+            passControlPose1Done2 = true;
+            passControlStartTime2 = now;
+        }
+
+        // --- Frame 2: wrist LEFT of elbow ---
+        if (passControlPose1Done2 &&
+                !passControlPose2Done2 &&
+                (now - passControlStartTime2 <= 4000) &&
+                rightArmRightAngle2 &&
+                leftArmUp2 &&
+                lw.getPosition().x < le.getPosition().x) {
+
+            passControlPose2Done2 = true;
+        }
+
+        // --- Frame 3: wrist RIGHT of elbow ---
+        if (passControlPose2Done2 &&
+                !passControlPose3Done2 &&
+                (now - passControlStartTime2 <= 4000) &&
+                rightArmRightAngle2 &&
+                leftArmUp2 &&
+                lw.getPosition().x > le.getPosition().x) {
+
+            passControlPose3Done2 = true;
+        }
+
+        // --- Frame 4: wrist LEFT of elbow ---
+        if (passControlPose3Done2 &&
+                !passControlPose4Done2 &&
+                (now - passControlStartTime2 <= 4000) &&
+                rightArmRightAngle2 &&
+                leftArmUp2 &&
+                lw.getPosition().x < le.getPosition().x) {
+
+            passControlPose4Done2 = true;
+        }
+
+        // --- Frame 5: Left arm vertical (shoulder above elbow above wrist) ---
+        if (passControlPose4Done2 &&
+                !passControlPose5Done2 &&
+                (now - passControlStartTime2 <= 5000) &&
+                ls.getPosition().y < le.getPosition().y &&
+                le.getPosition().y < lw.getPosition().y) {
+
+            passControlPose5Done2 = true;
+        }
+
+        // --- Frame 6: Left wrist passed right shoulder on X axis ---
+        if (passControlPose5Done2 &&
+                !passControlPose6Done2 &&
+                (now - passControlStartTime2 <= 5000) &&
+                lw.getPosition().x < rs.getPosition().x) {
+
+            passControlPose6Done2 = true;
+        }
+
+        return passControlPose1Done2 &&
+                passControlPose2Done2 &&
+                passControlPose3Done2 &&
+                passControlPose4Done2 &&
+                passControlPose5Done2 &&
+                passControlPose6Done2;
+    }
+
 
     // Tracking phases for Engine on Fire
     private boolean engineOnFirePose1Done = false;
@@ -1225,7 +1551,7 @@ public class SimulationPage extends AppCompatActivity {
     private boolean engineOnFirePose3Done = false;
     private boolean engineOnFirePose4Done = false;
 
-    private boolean detectEngineOnFire(
+    private boolean detectEngineOnFireL(
             PoseLandmark lw, PoseLandmark le, PoseLandmark ls, // left wrist, elbow, shoulder
             PoseLandmark rw, PoseLandmark re, PoseLandmark rs  // right wrist, elbow, shoulder
     ) {
@@ -1288,6 +1614,79 @@ public class SimulationPage extends AppCompatActivity {
                 engineOnFirePose3Done &&
                 engineOnFirePose4Done;
     }
+    // Tracking phases for Engine on Fire (mirrored version)
+    private boolean engineOnFirePose1Done2 = false;
+    private boolean engineOnFirePose2Done2 = false;
+    private boolean engineOnFirePose3Done2 = false;
+    private boolean engineOnFirePose4Done2 = false;
+
+    private boolean detectEngineOnFireR(
+            PoseLandmark rw, PoseLandmark re, PoseLandmark rs, // right wrist, elbow, shoulder
+            PoseLandmark lw, PoseLandmark le, PoseLandmark ls  // left wrist, elbow, shoulder
+    ) {
+
+        // --- RIGHT ARM: static angled position ---
+        boolean rightArmStatic2 = (
+                re.getPosition().x < rs.getPosition().x && // elbow is right of shoulder
+                        rw.getPosition().y < re.getPosition().y && // wrist above elbow
+                        re.getPosition().y < rs.getPosition().y && // elbow above shoulder
+                        rw.getPosition().x < re.getPosition().x    // wrist left of elbow
+        );
+
+        // --- LEFT ARM: up position ---
+        boolean leftArmUp2 = (
+                lw.getPosition().y < le.getPosition().y && // wrist above elbow
+                        le.getPosition().y > ls.getPosition().y && // elbow below shoulder
+                        lw.getPosition().x > le.getPosition().x    // wrist right of elbow (X-axis)
+        );
+
+        // --- LEFT ARM: down position ---
+        boolean leftArmDown2 = (
+                lw.getPosition().y > le.getPosition().y && // wrist below elbow
+                        le.getPosition().y > ls.getPosition().y && // elbow below shoulder
+                        lw.getPosition().x > le.getPosition().x    // wrist right of elbow (X-axis)
+        );
+
+        // Frame 1: Right arm static + Left arm up
+        if (!engineOnFirePose1Done2 &&
+                rightArmStatic2 &&
+                leftArmUp2) {
+            engineOnFirePose1Done2 = true;
+        }
+
+        // Frame 2: Right arm static + Left arm down
+        if (engineOnFirePose1Done2 &&
+                !engineOnFirePose2Done2 &&
+                rightArmStatic2 &&
+                leftArmDown2) {
+            engineOnFirePose2Done2 = true;
+        }
+
+        // Frame 3: Right arm static + Left arm up again
+        if (engineOnFirePose2Done2 &&
+                !engineOnFirePose3Done2 &&
+                rightArmStatic2 &&
+                leftArmUp2) {
+            engineOnFirePose3Done2 = true;
+        }
+
+        // Frame 4: Right arm static + Left arm down again
+        if (engineOnFirePose3Done2 &&
+                !engineOnFirePose4Done2 &&
+                rightArmStatic2 &&
+                leftArmDown2) {
+            engineOnFirePose4Done2 = true;
+        }
+
+        // Return true only when all 4 fanning phases are complete
+        return engineOnFirePose1Done2 &&
+                engineOnFirePose2Done2 &&
+                engineOnFirePose3Done2 &&
+                engineOnFirePose4Done2;
+    }
+
+
+
 
     // Tracking phases for Brakes on Fire
     private boolean brakesOnFirePose1Done = false;
@@ -1295,7 +1694,7 @@ public class SimulationPage extends AppCompatActivity {
     private boolean brakesOnFirePose3Done = false;
     private boolean brakesOnFirePose4Done = false;
 
-    private boolean detectBrakesOnFire(
+    private boolean detectBrakesOnFireL(
             PoseLandmark lw, PoseLandmark le, PoseLandmark ls, // left wrist, elbow, shoulder
             PoseLandmark rw, PoseLandmark re, PoseLandmark rs  // right wrist, elbow, shoulder
     ) {
@@ -1362,6 +1761,81 @@ public class SimulationPage extends AppCompatActivity {
                 brakesOnFirePose3Done &&
                 brakesOnFirePose4Done;
     }
+
+    // Tracking phases for Brakes on Fire (mirrored version)
+    private boolean brakesOnFirePose1Done2 = false;
+    private boolean brakesOnFirePose2Done2 = false;
+    private boolean brakesOnFirePose3Done2 = false;
+    private boolean brakesOnFirePose4Done2 = false;
+
+    private boolean detectBrakesOnFireR(
+            PoseLandmark rw, PoseLandmark re, PoseLandmark rs, // right wrist, elbow, shoulder
+            PoseLandmark lw, PoseLandmark le, PoseLandmark ls  // left wrist, elbow, shoulder
+    ) {
+
+        // --- RIGHT ARM: down & diagonal ---
+        boolean rightArmDown2 = (
+                rw.getPosition().y > re.getPosition().y && // wrist lower than elbow
+                        re.getPosition().y > rs.getPosition().y    // elbow lower than shoulder
+        );
+
+        boolean rightArmDiagonal2 = (
+                rw.getPosition().x < re.getPosition().x && // wrist further left than elbow
+                        re.getPosition().x < rs.getPosition().x    // elbow further left than shoulder
+        );
+
+        // --- LEFT ARM: up position ---
+        boolean leftArmUp2 = (
+                lw.getPosition().y < le.getPosition().y && // wrist above elbow
+                        le.getPosition().y > ls.getPosition().y && // elbow below shoulder
+                        lw.getPosition().x > le.getPosition().x    // wrist right of elbow (X-axis)
+        );
+
+        // --- LEFT ARM: down position ---
+        boolean leftArmDown2 = (
+                lw.getPosition().y > le.getPosition().y && // wrist below elbow
+                        le.getPosition().y > ls.getPosition().y && // elbow below shoulder
+                        lw.getPosition().x > le.getPosition().x    // wrist right of elbow (X-axis)
+        );
+
+        // Frame 1: Right arm down+diagonal + Left arm up
+        if (!brakesOnFirePose1Done2 &&
+                rightArmDown2 && rightArmDiagonal2 &&
+                leftArmUp2) {
+            brakesOnFirePose1Done2 = true;
+        }
+
+        // Frame 2: Right arm down+diagonal + Left arm down
+        if (brakesOnFirePose1Done2 &&
+                !brakesOnFirePose2Done2 &&
+                rightArmDown2 && rightArmDiagonal2 &&
+                leftArmDown2) {
+            brakesOnFirePose2Done2 = true;
+        }
+
+        // Frame 3: Right arm down+diagonal + Left arm up again
+        if (brakesOnFirePose2Done2 &&
+                !brakesOnFirePose3Done2 &&
+                rightArmDown2 && rightArmDiagonal2 &&
+                leftArmUp2) {
+            brakesOnFirePose3Done2 = true;
+        }
+
+        // Frame 4: Right arm down+diagonal + Left arm down again
+        if (brakesOnFirePose3Done2 &&
+                !brakesOnFirePose4Done2 &&
+                rightArmDown2 && rightArmDiagonal2 &&
+                leftArmDown2) {
+            brakesOnFirePose4Done2 = true;
+        }
+
+        // Return true only when all 4 phases are complete
+        return brakesOnFirePose1Done2 &&
+                brakesOnFirePose2Done2 &&
+                brakesOnFirePose3Done2 &&
+                brakesOnFirePose4Done2;
+    }
+
 
     // Tracking phases for Turn Left with continuous waving
     private boolean turnLeftPose1Done = false;
@@ -1439,6 +1913,10 @@ public class SimulationPage extends AppCompatActivity {
         startEnginePose2Done = false;
         startEngineStartTime = 0;
 
+        startEnginePose1Done2 = false;
+        startEnginePose2Done2 = false;
+        startEngineStartTime2 = 0;
+
         normalStopPose1Done = false;
         normalStopPose2Done = false;
 
@@ -1466,10 +1944,20 @@ public class SimulationPage extends AppCompatActivity {
         engineOnFirePose3Done = false;
         engineOnFirePose4Done = false;
 
+        engineOnFirePose1Done2 = false;
+        engineOnFirePose2Done2 = false;
+        engineOnFirePose3Done2 = false;
+        engineOnFirePose4Done2 = false;
+
         brakesOnFirePose1Done = false;
         brakesOnFirePose2Done = false;
         brakesOnFirePose3Done = false;
         brakesOnFirePose4Done = false;
+
+        brakesOnFirePose1Done2 = false;
+        brakesOnFirePose2Done2 = false;
+        brakesOnFirePose3Done2 = false;
+        brakesOnFirePose4Done2 = false;
 
         turnLeftPose1Done = false;
         turnLeftPose2Done = false;
@@ -1485,10 +1973,14 @@ public class SimulationPage extends AppCompatActivity {
         passControlPose6Done = false;
         passControlStartTime = 0;
 
-        // ✅ Reset airplane rotation
-        if (movableImage != null) {
-            rotateAirplane(0f); // rotate back to default position
-        }
+        passControlPose1Done2 = false;
+        passControlPose2Done2 = false;
+        passControlPose3Done2 = false;
+        passControlPose4Done2 = false;
+        passControlPose5Done2 = false;
+        passControlPose6Done2 = false;
+        passControlStartTime2 = 0;
+
     }
 
 
