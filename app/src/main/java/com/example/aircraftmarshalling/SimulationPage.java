@@ -140,10 +140,6 @@ public class SimulationPage extends AppCompatActivity {
     // New field to keep the original ByteBuffer for the runway GLB
     private ByteBuffer runwayGlbBuffer;
 
-    // Camera position for infinite runway
-    private float cameraZ = 0f; // or cameraY if Filament uses Y as forward
-    private float cameraSpeed = 0.02f; // units per frame
-
     // --- Editable runway translation values (set here directly) ---
     // Change these values to move the runway in X, Y, Z
     private static float runwayTranslateX = 0f;
@@ -165,9 +161,20 @@ public class SimulationPage extends AppCompatActivity {
     // List to keep track of all runway clones (including the original)
     private final List<FilamentAsset> runwayClones = new ArrayList<>();
 
+    private final java.util.List<Integer> fanEntities = new java.util.ArrayList<>();
+
+    // Base LOCAL transforms captured once after load (column-major 4x4)
+    private final java.util.Map<Integer, float[]> fanBaseLocal = new java.util.HashMap<>();
+
+    private boolean engineOn = false;
+    private float fanAngle = 0f;
+    private float fanSpeed = 0f;  // deg per frame (or scale by dt if you want)
+
+
     private final Choreographer.FrameCallback frameCallback = new Choreographer.FrameCallback() {
         @Override
         public void doFrame(long frameTimeNanos) {
+            updateFanRotation();
             // Only render, no movement or cloning per frame
             modelViewer.render(frameTimeNanos);
             choreographer.postFrameCallback(this);
@@ -228,7 +235,7 @@ public class SimulationPage extends AppCompatActivity {
         // No need to create a second MaterialProvider or AssetLoader, use modelViewer's
 
         makeTransparentBackground();
-        loadGlb("AirplaneWheels");
+        loadGlb("3DAirplane");
         loadSecondGlb("LightRunway");
         createRunwayClone(0, -0.285f, 1.475f);
         addDefaultLights();
@@ -277,7 +284,8 @@ public class SimulationPage extends AppCompatActivity {
 
         Button moveButton = findViewById(R.id.MoveButton);
         moveButton.setOnClickListener(v -> {
-            moveRunway();
+//            moveRunway();
+            engineOn = true;
         });
 
     }
@@ -365,6 +373,92 @@ public class SimulationPage extends AppCompatActivity {
         return cloneAsset;
     }
 
+
+
+    private void updateFanRotation() {
+        if (!engineOn || fanEntities.isEmpty()) return;
+
+        TransformManager tm = modelViewer.getEngine().getTransformManager();
+
+        // Spool-up
+        if (fanSpeed < 20f) fanSpeed += 0.2f;   // tune these numbers as you like
+
+        fanAngle += fanSpeed;
+        if (fanAngle >= 360f) fanAngle -= 360f;
+
+        // Build a column-major rotation around the correct axis.
+        // Try rotZ first; if your blades spin along X or Y, switch to rotX/rotY below.
+        float[] Rspin = makeRotationZColumnMajor((float) Math.toRadians(fanAngle));
+        // float[] Rspin = makeRotationYColumnMajor((float) Math.toRadians(fanAngle));
+        // float[] Rspin = makeRotationXColumnMajor((float) Math.toRadians(fanAngle));
+
+        for (int e : fanEntities) {
+            if (!tm.hasComponent(e)) continue;
+            int inst = tm.getInstance(e);
+
+            float[] base = fanBaseLocal.get(e);
+            if (base == null) continue;
+
+            // localNow = baseLocal * Rspin  (column-major multiply)
+            float[] localNow = mulCM(base, Rspin);
+            tm.setTransform(inst, localNow);
+        }
+    }
+
+    // Column-major rotation about Z
+    private static float[] makeRotationZColumnMajor(float a) {
+        float c = (float) Math.cos(a), s = (float) Math.sin(a);
+        return new float[] {
+                // col 0
+                c,  s,  0,  0,
+                // col 1
+                -s,  c,  0,  0,
+                // col 2
+                0,  0,  1,  0,
+                // col 3 (translation)
+                0,  0,  0,  1
+        };
+    }
+
+    private static float[] makeRotationYColumnMajor(float a) {
+        float c = (float) Math.cos(a), s = (float) Math.sin(a);
+        return new float[] {
+                c,  0, -s, 0,
+                0,  1,  0, 0,
+                s,  0,  c, 0,
+                0,  0,  0, 1
+        };
+    }
+
+    private static float[] makeRotationXColumnMajor(float a) {
+        float c = (float) Math.cos(a), s = (float) Math.sin(a);
+        return new float[] {
+                1,  0,  0, 0,
+                0,  c,  s, 0,
+                0, -s,  c, 0,
+                0,  0,  0, 1
+        };
+    }
+
+    // out = a * b  (all column-major)
+    private static float[] mulCM(float[] a, float[] b) {
+        float[] o = new float[16];
+        for (int row = 0; row < 4; row++) {
+            for (int col = 0; col < 4; col++) {
+                o[col*4 + row] =
+                        a[0*4 + row] * b[col*4 + 0] +
+                                a[1*4 + row] * b[col*4 + 1] +
+                                a[2*4 + row] * b[col*4 + 2] +
+                                a[3*4 + row] * b[col*4 + 3];
+            }
+        }
+        return o;
+    }
+
+
+
+
+
     // Update loadGlb to allow airplane rotation (copy logic from loadSecondGlb)
     private void loadGlb(String name) {
         ByteBuffer buffer = readAsset("models/" + name + ".glb");
@@ -373,9 +467,36 @@ public class SimulationPage extends AppCompatActivity {
         ResourceLoader resourceLoader = new ResourceLoader(modelViewer.getEngine());
         resourceLoader.loadResources(modelViewer.getAsset());
 
+        // Debug logs
+        FilamentUtils.logAssetHierarchy(modelViewer.getAsset());
+        FilamentUtils.logAllEntities(modelViewer.getAsset());
+        FilamentUtils.logAllEntitiesWithMaterials(modelViewer.getAsset());
+
+        // --- collect the blades you want to spin ---
+        fanEntities.clear();
+        fanBaseLocal.clear();
+
+        TransformManager tm = modelViewer.getEngine().getTransformManager();
+
+        int[] entities = modelViewer.getAsset().getEntities();
+        for (int e : entities) {
+            String n = modelViewer.getAsset().getName(e);
+            if (n == null) continue;
+
+            // match your latest names (add any aliases you use)
+            if ("FanBlades_Left".equals(n) || "FanBlades_Right".equals(n)
+                    || "Fans.002".equals(n) || "Fans.003".equals(n)) {
+                fanEntities.add(e);
+                int inst = tm.getInstance(e);
+                float[] base = new float[16];
+                tm.getTransform(inst, base);      // ← LOCAL transform relative to parent
+                fanBaseLocal.put(e, base);        // store for correct pivot rotation
+                android.util.Log.d("Fans", "Found: " + n + " id=" + e);
+            }
+        }
+
         // Scale and rotate airplane model (same logic as runway)
         int root = modelViewer.getAsset().getRoot();
-        TransformManager tm = modelViewer.getEngine().getTransformManager();
         int instance = tm.getInstance(root);
 
         float scale = 0.8f;
@@ -388,6 +509,7 @@ public class SimulationPage extends AppCompatActivity {
 
         modelViewer.getScene().setSkybox(null);
     }
+
 
     // New method to load the second GLB model
     private void loadSecondGlb(String name) {
