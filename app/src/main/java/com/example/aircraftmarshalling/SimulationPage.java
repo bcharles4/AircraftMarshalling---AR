@@ -723,7 +723,7 @@ public class SimulationPage extends AppCompatActivity {
         // --- Cooldown phase ---
         if (isCooldown) {
             long cooldownElapsed = (currentTime - phaseStartTime) / 1000;
-            long remainingCooldown = 5 - cooldownElapsed;
+            long remainingCooldown = 7 - cooldownElapsed;
 
             if (remainingCooldown > 0) {
                 runOnUiThread(() -> poseStatusText.setText(lastDetectionResult + " (" + remainingCooldown + ")"));
