@@ -1217,33 +1217,6 @@ public class SimulationPage extends AppCompatActivity {
         return turnRightPose1Done && turnRightPose2Done && turnRightPose3Done && turnRightPose4Done;
     }
 
-
-    //    private boolean detectChalkInstalled(
-//            PoseLandmark ls, PoseLandmark le, PoseLandmark lw, // left shoulder, elbow, wrist
-//            PoseLandmark rs, PoseLandmark re, PoseLandmark rw  // right shoulder, elbow, wrist
-//    ) {
-//        // --- Left Arm Up ---
-//        boolean leftArmUp = (
-//                lw.getPosition().y < le.getPosition().y && // wrist above elbow
-//                        le.getPosition().y < ls.getPosition().y    // elbow above shoulder
-//        );
-//
-//        // --- Right Arm Up ---
-//        boolean rightArmUp = (
-//                rw.getPosition().y < re.getPosition().y && // wrist above elbow
-//                        re.getPosition().y < rs.getPosition().y    // elbow above shoulder
-//        );
-//
-//        // --- Additional X-axis rules ---
-//        boolean xPositionCheck = (
-//                rw.getPosition().x < re.getPosition().x && // right wrist left of right elbow
-//                        lw.getPosition().x > le.getPosition().x    // left wrist right of left elbow
-//        );
-//
-//        // --- Static pose detection ---
-//        return leftArmUp && rightArmUp && xPositionCheck;
-//    }
-
     // Tracking phases for Slow Down
     private boolean slowDownPose1Done = false;
     private boolean slowDownPose2Done = false;
