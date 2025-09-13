@@ -11,19 +11,22 @@
 
 
     <!-- TextureView for CameraX preview (replaces PreviewView) -->
+
+
+    <!-- SurfaceView for Filament 3D display, must be after TextureView for correct Z-order -->
+
+
     <TextureView
         android:id="@+id/previewView"
         android:layout_width="0dp"
         android:layout_height="0dp"
         android:scaleType="fitCenter"
-        app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintBottom_toTopOf="@id/bottom_navigation"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="1.0"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
-
-
-    <!-- SurfaceView for Filament 3D display, must be after TextureView for correct Z-order -->
-
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_bias="0.0" />
 
     <SurfaceView
         android:id="@+id/filamentView"
@@ -120,8 +123,20 @@
         app:layout_constraintBottom_toTopOf="@+id/startSim_button"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-
+        android:visibility="gone"
         app:layout_constraintTop_toTopOf="@+id/previewView" />
+
+    <Button
+        android:id="@+id/SkellyButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Skeleton"
+        app:layout_constraintBottom_toBottomOf="@+id/previewView"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.88"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/startSim_button"
+        app:layout_constraintVertical_bias="0.732" />
 
 
 </androidx.constraintlayout.widget.ConstraintLayout>

@@ -170,6 +170,9 @@ public class SimulationPage extends AppCompatActivity {
     private float fanAngle = 0f;
     private float fanSpeed = 0f;  // deg per frame (or scale by dt if you want)
 
+    private boolean turnedLeft = false;
+    private boolean turnedRight = false;
+
 
     private final Choreographer.FrameCallback frameCallback = new Choreographer.FrameCallback() {
         @Override
@@ -244,7 +247,7 @@ public class SimulationPage extends AppCompatActivity {
             startSimButton.setVisibility(android.view.View.GONE);
             poseStatusText.setVisibility(android.view.View.VISIBLE);
             flipButton.setVisibility(android.view.View.VISIBLE);
-//            poseOverlayView.setVisibility(android.view.View.VISIBLE);
+            poseOverlayView.setVisibility(android.view.View.GONE);
             filamentView.setVisibility(android.view.View.VISIBLE);
 
         });
@@ -288,6 +291,10 @@ public class SimulationPage extends AppCompatActivity {
             engineOn = true;
         });
 
+        Button skellyButton = findViewById(R.id.SkellyButton);
+        skellyButton.setOnClickListener(v -> {
+            poseOverlayView.setVisibility(android.view.View.VISIBLE);
+        });
     }
     private void callMoveRunway(int times) {
         ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
@@ -731,7 +738,7 @@ public class SimulationPage extends AppCompatActivity {
                 isCooldown = false;
                 isDetectingAction = false;
             }
-//            updateSkeletonOverlay(imageWidth, imageHeight, leftWrist, rightWrist, leftElbow, rightElbow, leftShoulder, rightShoulder);
+            updateSkeletonOverlay(imageWidth, imageHeight, leftWrist, rightWrist, leftElbow, rightElbow, leftShoulder, rightShoulder);
             return;
         }
 
@@ -809,13 +816,17 @@ public class SimulationPage extends AppCompatActivity {
             }
             else if (turnRight) {
                 lastDetectionResult = "Turn Right";
-                if (engineStarted) {
+                if (engineStarted && !turnedRight) {
                     turnRight(4000);
+                    turnedRight = true;
+                    turnedLeft = false;
                 }
             } else if (turnLeft) {
                 lastDetectionResult = "Turn Left";
-                if (engineStarted) {
-                    turnLeft(3000);
+                if (engineStarted && !turnedLeft) {
+                    turnLeft(4000);
+                    turnedLeft = true;
+                    turnedRight = false;
                 }
             }
             else if (engineFireL) {
@@ -865,7 +876,7 @@ public class SimulationPage extends AppCompatActivity {
 
 
         // Always update overlay
-//        updateSkeletonOverlay(imageWidth, imageHeight, leftWrist, rightWrist, leftElbow, rightElbow, leftShoulder, rightShoulder);
+        updateSkeletonOverlay(imageWidth, imageHeight, leftWrist, rightWrist, leftElbow, rightElbow, leftShoulder, rightShoulder);
     }
 
 
