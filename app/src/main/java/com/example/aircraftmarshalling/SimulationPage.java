@@ -170,6 +170,7 @@ public class SimulationPage extends AppCompatActivity {
     private float fanAngle = 0f;
     private float fanSpeed = 0f;  // deg per frame (or scale by dt if you want)
 
+    boolean skellyMode = false;
     private boolean turnedLeft = false;
     private boolean turnedRight = false;
 
@@ -293,7 +294,16 @@ public class SimulationPage extends AppCompatActivity {
 
         Button skellyButton = findViewById(R.id.SkellyButton);
         skellyButton.setOnClickListener(v -> {
-            poseOverlayView.setVisibility(android.view.View.VISIBLE);
+            if (!skellyMode)
+            {
+                poseOverlayView.setVisibility(android.view.View.VISIBLE);
+                skellyMode = true;
+            }
+            else
+            {
+                poseOverlayView.setVisibility(android.view.View.GONE);
+                skellyMode = false;
+            }
         });
     }
     private void callMoveRunway(int times) {
