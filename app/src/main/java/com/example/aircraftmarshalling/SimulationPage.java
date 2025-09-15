@@ -121,8 +121,9 @@ public class SimulationPage extends AppCompatActivity {
 
     private static final int REQUEST_CAMERA_PERMISSION = 1001;
     private String name, email, phone;
-    private TextureView previewView; // Change from PreviewView to TextureView
+//    private TextureView previewView; // Change from PreviewView to TextureView
     private PoseOverlayView poseOverlayView;
+    private androidx.camera.view.PreviewView previewView;
     private TextView poseStatusText;
     private PoseDetector poseDetector;
     private boolean isUsingFrontCamera = false; // default = back camera
@@ -155,8 +156,8 @@ public class SimulationPage extends AppCompatActivity {
     private static final float RUNWAY_SCALE = 0.001f;
     boolean infiniteRunwayStarted = false;
 
-    boolean engineStarted = false;
     int runwayMoved = 0;
+    private float airplaneYaw = 0f; // Y-axis rotation in degrees
 
     // List to keep track of all runway clones (including the original)
     private final List<FilamentAsset> runwayClones = new ArrayList<>();
@@ -166,14 +167,15 @@ public class SimulationPage extends AppCompatActivity {
     // Base LOCAL transforms captured once after load (column-major 4x4)
     private final java.util.Map<Integer, float[]> fanBaseLocal = new java.util.HashMap<>();
 
-    private boolean engineOn = false;
+    boolean lefEngineStarted = false;
+    boolean rightEngineStarted = false;
     private float fanAngle = 0f;
     private float fanSpeed = 0f;  // deg per frame (or scale by dt if you want)
 
     boolean skellyMode = false;
     private boolean turnedLeft = false;
     private boolean turnedRight = false;
-
+    private boolean isCentered = true;
 
     private final Choreographer.FrameCallback frameCallback = new Choreographer.FrameCallback() {
         @Override
@@ -200,6 +202,7 @@ public class SimulationPage extends AppCompatActivity {
         poseStatusText = findViewById(R.id.poseStatusText);
         Button startSimButton = findViewById(R.id.startSim_button);
         BottomNavigationView bottomNavigationView = findViewById(R.id.bottom_navigation);
+        Button skellyButton = findViewById(R.id.SkellyButton);
 
         ImageButton flipButton = findViewById(R.id.flipButton);
         flipButton.setOnClickListener(v -> {
@@ -250,7 +253,7 @@ public class SimulationPage extends AppCompatActivity {
             flipButton.setVisibility(android.view.View.VISIBLE);
             poseOverlayView.setVisibility(android.view.View.GONE);
             filamentView.setVisibility(android.view.View.VISIBLE);
-
+            skellyButton.setVisibility(android.view.View.VISIBLE);
         });
 
         Intent intent2 = getIntent();
@@ -289,10 +292,11 @@ public class SimulationPage extends AppCompatActivity {
         Button moveButton = findViewById(R.id.MoveButton);
         moveButton.setOnClickListener(v -> {
 //            moveRunway();
-            engineOn = true;
+            lefEngineStarted = true;
+            rightEngineStarted = true;
         });
 
-        Button skellyButton = findViewById(R.id.SkellyButton);
+
         skellyButton.setOnClickListener(v -> {
             if (!skellyMode)
             {
@@ -324,7 +328,7 @@ public class SimulationPage extends AppCompatActivity {
 
     // Move all runway clones (including original) by -0.01 on Y and 0.1 on Z
     private void moveRunway() {
-        if (!engineStarted) {
+        if (!lefEngineStarted && !rightEngineStarted) {
             return;
         }
 
@@ -393,7 +397,7 @@ public class SimulationPage extends AppCompatActivity {
 
 
     private void updateFanRotation() {
-        if (!engineOn || fanEntities.isEmpty()) return;
+        if (!lefEngineStarted && !rightEngineStarted || fanEntities.isEmpty()) return;
 
         TransformManager tm = modelViewer.getEngine().getTransformManager();
 
@@ -683,12 +687,13 @@ public class SimulationPage extends AppCompatActivity {
                 imageAnalysis.setAnalyzer(ContextCompat.getMainExecutor(this), this::processImageProxy);
 
                 // Use TextureView for CameraX preview
-                preview.setSurfaceProvider(request -> {
-                    Surface surface = new Surface(previewView.getSurfaceTexture());
-                    request.provideSurface(surface, ContextCompat.getMainExecutor(this), result -> {
-                        surface.release();
-                    });
-                });
+//                preview.setSurfaceProvider(request -> {
+//                    Surface surface = new Surface(previewView.getSurfaceTexture());
+//                    request.provideSurface(surface, ContextCompat.getMainExecutor(this), result -> {
+//                        surface.release();
+//                    });
+//                });
+                preview.setSurfaceProvider(previewView.getSurfaceProvider());
 
                 cameraProvider.bindToLifecycle(this, selector, preview, imageAnalysis);
 
@@ -796,10 +801,14 @@ public class SimulationPage extends AppCompatActivity {
 
         // End of 7-second detection
         if (elapsed >= 7) {
-            if (normalStop) { //
+            if (chockInstalled) {
+                lastDetectionResult = "Chock Installed";
+            }
+            else if (normalStop) { //
                 lastDetectionResult = "Normal Stop";
-                callMoveRunway(2);
-                engineStarted = false;
+//                callMoveRunway(2);
+                lefEngineStarted = false;
+                rightEngineStarted = false;
             }
 //            else if (emergencyStop) { //
 //                lastDetectionResult = "Emergency Stop";
@@ -807,38 +816,41 @@ public class SimulationPage extends AppCompatActivity {
 //            }
             else if (passControlL) {
                 lastDetectionResult = "Pass Control to Left";
-                callMoveRunway(4);
+//                callMoveRunway(4);
             }
             else if (passControlR) {
                 lastDetectionResult = "Pass Control to Right";
-                callMoveRunway(4);
+//                callMoveRunway(4);
             }
 
             else if (startEngineL) {
                 lastDetectionResult = "Start Left Engine";
-                engineStarted = true;
-                callMoveRunway(4);
+                lefEngineStarted = true;
+//                callMoveRunway(4);
             }
             else if (startEngineR) {
                 lastDetectionResult = "Start Right Engine";
-                engineStarted = true;
-                callMoveRunway(4);
+                rightEngineStarted = true;
+//                callMoveRunway(4);
             }
             else if (turnRight) {
                 lastDetectionResult = "Turn Right";
-                if (engineStarted && !turnedRight) {
+                if (lefEngineStarted && rightEngineStarted && (isCentered || turnedLeft) && !turnedRight) {
                     turnRight(4000);
                     turnedRight = true;
                     turnedLeft = false;
+                    isCentered = false; // moved away from center
                 }
             } else if (turnLeft) {
                 lastDetectionResult = "Turn Left";
-                if (engineStarted && !turnedLeft) {
+                if (lefEngineStarted && rightEngineStarted && (isCentered || turnedRight) && !turnedLeft) {
                     turnLeft(4000);
                     turnedLeft = true;
                     turnedRight = false;
+                    isCentered = false; // moved away from center
                 }
             }
+
             else if (engineFireL) {
                 lastDetectionResult = "Left Engine on Fire";
                 callMoveRunway(4);
@@ -861,20 +873,18 @@ public class SimulationPage extends AppCompatActivity {
             }
             else if (shutOffEngine) {
                 lastDetectionResult = "Shut Off Engine";
-                engineStarted = false;
+                lefEngineStarted = false;
+                rightEngineStarted = false;
             } else if (negativeSignal) {
                 lastDetectionResult = "Negative";
                 callMoveRunway(4);
-            }
-            else if (chockInstalled) {
-                lastDetectionResult = "Chock Installed";
             }
             else if (holdPosition) {
                 lastDetectionResult = "Hold Position";
                 callMoveRunway(4);
             } else {
-                callMoveRunway(4);
                 lastDetectionResult = "Unknown";
+                callMoveRunway(4);
             }
 
             runOnUiThread(() -> poseStatusText.setText(lastDetectionResult + " (5)"));
@@ -2110,40 +2120,36 @@ public class SimulationPage extends AppCompatActivity {
     float currentAngle = 0f; // keep track of the current rotation
     float scale = 0.7f;      // your model’s scale
 
-    private void applyTransform(float angleDegrees) {
+    private void applyTransform() {
         int root = modelViewer.getAsset().getRoot();
         TransformManager tm = modelViewer.getEngine().getTransformManager();
         int instance = tm.getInstance(root);
 
-        float angle = (float) toRadians(angleDegrees);
-        float cos = (float) cos(angle);
-        float sin = (float) sin(angle);
+        float scale = 0.8f;
+        float angleX = -5f; // your base X rotation
+        float angleY = airplaneYaw; // dynamic yaw
+        float angleZ = 0f;
 
-        float[] matrix = {
-                scale * cos, 0, scale * -sin, 0,
-                0, scale, 0, 0,
-                scale * sin, 0, scale * cos, 0,
-                0, 0, 0, 1
-        };
-
+        float[] matrix = createTransform(scale, angleX, angleY, angleZ);
         tm.setTransform(instance, matrix);
     }
 
     // Call this to rotate smoothly
     private void rotateBy(final float deltaAngle, int durationMs) {
-        float startAngle = currentAngle;
-        float endAngle = currentAngle + deltaAngle;
+        final float startYaw = airplaneYaw;
+        final float endYaw = startYaw + deltaAngle;
 
-        ValueAnimator animator = ValueAnimator.ofFloat(startAngle, endAngle);
+        ValueAnimator animator = ValueAnimator.ofFloat(startYaw, endYaw);
         animator.setDuration(durationMs);
         animator.addUpdateListener(animation -> {
-            float animatedValue = (float) animation.getAnimatedValue();
-            applyTransform(animatedValue);
+            airplaneYaw = (float) animation.getAnimatedValue();
+            applyTransform();
         });
         animator.addListener(new AnimatorListenerAdapter() {
             @Override
             public void onAnimationEnd(Animator animation) {
-                currentAngle = endAngle % 360; // keep angle normalized
+                airplaneYaw = endYaw % 360f;
+                applyTransform();
             }
         });
         animator.start();
