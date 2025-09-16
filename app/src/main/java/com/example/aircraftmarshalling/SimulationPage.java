@@ -177,6 +177,9 @@ public class SimulationPage extends AppCompatActivity {
     private boolean turnedRight = false;
     private boolean isCentered = true;
 
+    private Integer fanEntityLeft = null;
+    private Integer fanEntityRight = null;
+
     private final Choreographer.FrameCallback frameCallback = new Choreographer.FrameCallback() {
         @Override
         public void doFrame(long frameTimeNanos) {
@@ -397,32 +400,32 @@ public class SimulationPage extends AppCompatActivity {
 
 
     private void updateFanRotation() {
-        if (!lefEngineStarted && !rightEngineStarted || fanEntities.isEmpty()) return;
-
         TransformManager tm = modelViewer.getEngine().getTransformManager();
-
+        
         // Spool-up
-        if (fanSpeed < 20f) fanSpeed += 0.2f;   // tune these numbers as you like
-
+        if (fanSpeed < 20f) fanSpeed += 0.2f;
         fanAngle += fanSpeed;
         if (fanAngle >= 360f) fanAngle -= 360f;
 
-        // Build a column-major rotation around the correct axis.
-        // Try rotZ first; if your blades spin along X or Y, switch to rotX/rotY below.
         float[] Rspin = makeRotationZColumnMajor((float) Math.toRadians(fanAngle));
-        // float[] Rspin = makeRotationYColumnMajor((float) Math.toRadians(fanAngle));
-        // float[] Rspin = makeRotationXColumnMajor((float) Math.toRadians(fanAngle));
 
-        for (int e : fanEntities) {
-            if (!tm.hasComponent(e)) continue;
-            int inst = tm.getInstance(e);
-
-            float[] base = fanBaseLocal.get(e);
-            if (base == null) continue;
-
-            // localNow = baseLocal * Rspin  (column-major multiply)
-            float[] localNow = mulCM(base, Rspin);
-            tm.setTransform(inst, localNow);
+        // Left fan
+        if (lefEngineStarted && fanEntityLeft != null && tm.hasComponent(fanEntityLeft)) {
+            int inst = tm.getInstance(fanEntityLeft);
+            float[] base = fanBaseLocal.get(fanEntityLeft);
+            if (base != null) {
+                float[] localNow = mulCM(base, Rspin);
+                tm.setTransform(inst, localNow);
+            }
+        }
+        // Right fan
+        if (rightEngineStarted && fanEntityRight != null && tm.hasComponent(fanEntityRight)) {
+            int inst = tm.getInstance(fanEntityRight);
+            float[] base = fanBaseLocal.get(fanEntityRight);
+            if (base != null) {
+                float[] localNow = mulCM(base, Rspin);
+                tm.setTransform(inst, localNow);
+            }
         }
     }
 
@@ -496,6 +499,8 @@ public class SimulationPage extends AppCompatActivity {
         // --- collect the blades you want to spin ---
         fanEntities.clear();
         fanBaseLocal.clear();
+        fanEntityLeft = null;
+        fanEntityRight = null;
 
         TransformManager tm = modelViewer.getEngine().getTransformManager();
 
@@ -504,15 +509,20 @@ public class SimulationPage extends AppCompatActivity {
             String n = modelViewer.getAsset().getName(e);
             if (n == null) continue;
 
-            // match your latest names (add any aliases you use)
-            if ("FanBlades_Left".equals(n) || "FanBlades_Right".equals(n)
-                    || "Fans.002".equals(n) || "Fans.003".equals(n)) {
-                fanEntities.add(e);
+            if ("FanBlades_Left".equals(n) || "Fans.002".equals(n)) {
+                fanEntityLeft = e;
                 int inst = tm.getInstance(e);
                 float[] base = new float[16];
-                tm.getTransform(inst, base);      // ← LOCAL transform relative to parent
-                fanBaseLocal.put(e, base);        // store for correct pivot rotation
-                android.util.Log.d("Fans", "Found: " + n + " id=" + e);
+                tm.getTransform(inst, base);
+                fanBaseLocal.put(e, base);
+                android.util.Log.d("Fans", "Found LEFT: " + n + " id=" + e);
+            } else if ("FanBlades_Right".equals(n) || "Fans.003".equals(n)) {
+                fanEntityRight = e;
+                int inst = tm.getInstance(e);
+                float[] base = new float[16];
+                tm.getTransform(inst, base);
+                fanBaseLocal.put(e, base);
+                android.util.Log.d("Fans", "Found RIGHT: " + n + " id=" + e);
             }
         }
 
