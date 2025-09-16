@@ -180,11 +180,25 @@ public class SimulationPage extends AppCompatActivity {
     private Integer fanEntityLeft = null;
     private Integer fanEntityRight = null;
 
+    private static final float RUNWAY_MOVE_Y = 0.0047f;    // Y movement per frame (tweak as needed)
+    private static final float RUNWAY_MOVE_Z = -0.0270f;  // Z movement per frame (tweak as needed)
+    private static final float FIRST_CLONE_OFFSET_Y = -0.260f; // tweak as needed
+    private static final float FIRST_CLONE_OFFSET_Z = 1.475f;  // tweak as needed
+    private static final float CLONE_OFFSET_Y = -0.260f; // tweak as needed
+    private static final float CLONE_OFFSET_Z = 1.475f;  // tweak as needed
+    private static final float SPAWN_TRIGGER_DISTANCE = 0.5f; // When to spawn next (Z < this)
+    private static final float REMOVE_TRIGGER_DISTANCE = -2.0f; // When to remove (Z < this)
+
+    private boolean firstCloneSpawned = false;
+    private boolean runwayMoving = false;
+    private long runwayMoveStartTime = 0;
+    private long runwayMoveDurationMs = 0;
+
     private final Choreographer.FrameCallback frameCallback = new Choreographer.FrameCallback() {
         @Override
         public void doFrame(long frameTimeNanos) {
             updateFanRotation();
-            // Only render, no movement or cloning per frame
+            updateRunwayAnimation();
             modelViewer.render(frameTimeNanos);
             choreographer.postFrameCallback(this);
         }
@@ -247,7 +261,7 @@ public class SimulationPage extends AppCompatActivity {
         makeTransparentBackground();
         loadGlb("3DAirplane");
         loadSecondGlb("LightRunway");
-        createRunwayClone(0, -0.285f, 1.475f);
+        // createRunwayClone(0, -0.285f, 1.475f);
         addDefaultLights();
 
         startSimButton.setOnClickListener(v -> {
@@ -294,9 +308,9 @@ public class SimulationPage extends AppCompatActivity {
 
         Button moveButton = findViewById(R.id.MoveButton);
         moveButton.setOnClickListener(v -> {
-//            moveRunway();
             lefEngineStarted = true;
             rightEngineStarted = true;
+            callMoveRunway(3);
         });
 
 
@@ -305,28 +319,40 @@ public class SimulationPage extends AppCompatActivity {
             {
                 poseOverlayView.setVisibility(android.view.View.VISIBLE);
                 skellyMode = true;
+                filamentView.setVisibility(android.view.View.GONE);
             }
             else
             {
                 poseOverlayView.setVisibility(android.view.View.GONE);
                 skellyMode = false;
+                filamentView.setVisibility(android.view.View.VISIBLE);
             }
         });
     }
-    private void callMoveRunway(int times) {
-        ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
 
-        final int[] count = {0};
-        Runnable task = () -> {
-            moveRunway();
-            count[0]++;
-            if (count[0] >= times) {
-                scheduler.shutdown();
-            }
-        };
+    // private void callMoveRunway(int times) {
+    //     ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
 
-        // Run every 1 ms (minimum realistic delay on Android)
-        scheduler.scheduleWithFixedDelay(task, 0, 800, TimeUnit.MILLISECONDS);
+    //     final int[] count = {0};
+    //     Runnable task = () -> {
+    //         moveRunway();
+    //         count[0]++;
+    //         if (count[0] >= times) {
+    //             scheduler.shutdown();
+    //         }
+    //     };
+
+    //     // Run every 1 ms (minimum realistic delay on Android)
+    //     scheduler.scheduleWithFixedDelay(task, 0, 800, TimeUnit.MILLISECONDS);
+    // }
+
+    public void callMoveRunway(int seconds) {
+        if (!lefEngineStarted || !rightEngineStarted) return;
+        if (runwayMoving) return; // Prevent overlapping moves
+        runwayMoving = true;
+        runwayMoveStartTime = System.currentTimeMillis();
+        runwayMoveDurationMs = seconds * 1000L;
+        firstCloneSpawned = false; // Reset so first clone logic works again
     }
 
     // Move all runway clones (including original) by -0.01 on Y and 0.1 on Z
@@ -361,6 +387,94 @@ public class SimulationPage extends AppCompatActivity {
         if (runwayMoved % 51 == 0) {
             createRunwayClone(0, -0.289f, 1.475f);
         }
+    }
+
+
+    private void updateRunwayAnimation() {
+        if (!runwayMoving || !lefEngineStarted || !rightEngineStarted) return;
+
+        long now = System.currentTimeMillis();
+        long elapsed = now - runwayMoveStartTime;
+        if (elapsed > runwayMoveDurationMs) {
+            runwayMoving = false;
+            return;
+        }
+
+        // Move original runway
+        if (runwayAsset != null) {
+            moveRunwayAsset(runwayAsset, RUNWAY_MOVE_Y, RUNWAY_MOVE_Z);
+        }
+        // Move all clones
+        for (FilamentAsset clone : runwayClones) {
+            moveRunwayAsset(clone, RUNWAY_MOVE_Y, RUNWAY_MOVE_Z);
+        }
+
+        // --- SPAWN LOGIC ---
+        TransformManager tm = modelViewer.getEngine().getTransformManager();
+
+        // 1. Spawn the first clone based on the original runway asset
+        if (!firstCloneSpawned && runwayAsset != null) {
+            int inst = tm.getInstance(runwayAsset.getRoot());
+            float[] matrix = new float[16];
+            tm.getTransform(inst, matrix);
+            float z = matrix[14];
+            if (z < SPAWN_TRIGGER_DISTANCE) {
+                float y = matrix[13] + FIRST_CLONE_OFFSET_Y;
+                float zNew = matrix[14] + FIRST_CLONE_OFFSET_Z;
+                createRunwayClone(0, y, zNew);
+                firstCloneSpawned = true;
+            }
+        }
+
+        // 2. Spawn subsequent clones based on the last clone
+        if (firstCloneSpawned && !runwayClones.isEmpty()) {
+            FilamentAsset last = runwayClones.get(runwayClones.size() - 1);
+            int inst = tm.getInstance(last.getRoot());
+            float[] matrix = new float[16];
+            tm.getTransform(inst, matrix);
+            float z = matrix[14];
+            if (z < SPAWN_TRIGGER_DISTANCE) {
+                float y = matrix[13] + CLONE_OFFSET_Y;
+                float zNew = matrix[14] + CLONE_OFFSET_Z;
+                createRunwayClone(0, y, zNew);
+            }
+        }
+
+        // Remove runways that are too far away
+        // 1. Remove original runway asset if needed
+        // if (runwayAsset != null) {
+        //     int instOrig = tm.getInstance(runwayAsset.getRoot());
+        //     float[] matrixOrig = new float[16];
+        //     tm.getTransform(instOrig, matrixOrig);
+        //     if (matrixOrig[14] < REMOVE_TRIGGER_DISTANCE) {
+        //         modelViewer.getScene().removeEntities(runwayAsset.getEntities());
+        //         runwayAsset = null;
+        //     }
+        // }
+
+        // // 2. Remove clones as before
+        // Iterator<FilamentAsset> it = runwayClones.iterator();
+        // while (it.hasNext()) {
+        //     FilamentAsset clone = it.next();
+        //     int inst = tm.getInstance(clone.getRoot());
+        //     float[] matrix = new float[16];
+        //     tm.getTransform(inst, matrix);
+        //     if (matrix[14] < REMOVE_TRIGGER_DISTANCE) {
+        //         modelViewer.getScene().removeEntities(clone.getEntities());
+        //         it.remove();
+        //     }
+        // }
+    }
+
+    // --- Helper to move a runway asset by deltaY, deltaZ ---
+    private void moveRunwayAsset(FilamentAsset asset, float deltaY, float deltaZ) {
+        TransformManager tm = modelViewer.getEngine().getTransformManager();
+        int inst = tm.getInstance(asset.getRoot());
+        float[] matrix = new float[16];
+        tm.getTransform(inst, matrix);
+        matrix[13] += deltaY; // Y axis
+        matrix[14] += deltaZ; // Z axis
+        tm.setTransform(inst, matrix);
     }
 
     // Callable function to create a new runway clone at a given y and z (and x) position
@@ -863,23 +977,23 @@ public class SimulationPage extends AppCompatActivity {
 
             else if (engineFireL) {
                 lastDetectionResult = "Left Engine on Fire";
-                callMoveRunway(4);
+                callMoveRunway(3);
             }
             else if (engineFireR) {
                 lastDetectionResult = "Right Engine on Fire";
-                callMoveRunway(4);
+                callMoveRunway(3);
             }
             else if (brakeFireL) {
                 lastDetectionResult = "Left Brakes on Fire";
-                callMoveRunway(4);
+                callMoveRunway(3);
             }
             else if (brakeFireR) {
                 lastDetectionResult = "Right Brakes on Fire";
-                callMoveRunway(4);
+                callMoveRunway(3);
             }
             else if (slowDown) {
                 lastDetectionResult = "Slow Down";
-                callMoveRunway(2);
+                callMoveRunway(1);
             }
             else if (shutOffEngine) {
                 lastDetectionResult = "Shut Off Engine";
@@ -887,14 +1001,14 @@ public class SimulationPage extends AppCompatActivity {
                 rightEngineStarted = false;
             } else if (negativeSignal) {
                 lastDetectionResult = "Negative";
-                callMoveRunway(4);
+                callMoveRunway(3);
             }
             else if (holdPosition) {
                 lastDetectionResult = "Hold Position";
-                callMoveRunway(4);
+                callMoveRunway(3);
             } else {
                 lastDetectionResult = "Unknown";
-                callMoveRunway(4);
+                callMoveRunway(3);
             }
 
             runOnUiThread(() -> poseStatusText.setText(lastDetectionResult + " (5)"));
