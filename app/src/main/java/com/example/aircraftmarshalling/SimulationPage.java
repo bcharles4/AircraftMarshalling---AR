@@ -194,6 +194,12 @@ public class SimulationPage extends AppCompatActivity {
     private long runwayMoveStartTime = 0;
     private long runwayMoveDurationMs = 0;
 
+    private FilamentAsset chocksAsset = null;
+    boolean isChocked = true;
+    private final List<Integer> frontChockEntities = new ArrayList<>();
+    private final List<Integer> backChockEntities = new ArrayList<>();
+    private final Map<Integer, float[]> chockBaseLocal = new HashMap<>();
+
     private final Choreographer.FrameCallback frameCallback = new Choreographer.FrameCallback() {
         @Override
         public void doFrame(long frameTimeNanos) {
@@ -263,6 +269,7 @@ public class SimulationPage extends AppCompatActivity {
         loadSecondGlb("LightRunway");
         // createRunwayClone(0, -0.285f, 1.475f);
         addDefaultLights();
+        loadGlbThird("Chocks");
 
         startSimButton.setOnClickListener(v -> {
             startSimButton.setVisibility(android.view.View.GONE);
@@ -308,9 +315,18 @@ public class SimulationPage extends AppCompatActivity {
 
         Button moveButton = findViewById(R.id.MoveButton);
         moveButton.setOnClickListener(v -> {
-            lefEngineStarted = true;
-            rightEngineStarted = true;
-            callMoveRunway(3);
+//            lefEngineStarted = true;
+//            rightEngineStarted = true;
+//            callMoveRunway(3);
+            if (isChocked)
+            {
+                hideChocks();
+                isChocked = false;
+            }
+            else {
+                resetChocks();
+                isChocked = true;
+            }
         });
 
 
@@ -349,6 +365,7 @@ public class SimulationPage extends AppCompatActivity {
     public void callMoveRunway(int seconds) {
         if (!lefEngineStarted || !rightEngineStarted) return;
         if (runwayMoving) return; // Prevent overlapping moves
+        hideChocks();
         runwayMoving = true;
         runwayMoveStartTime = System.currentTimeMillis();
         runwayMoveDurationMs = seconds * 1000L;
@@ -711,6 +728,67 @@ public class SimulationPage extends AppCompatActivity {
         // No cloning, no list, no startInfiniteRunway
     }
 
+    private void loadGlbThird(String name) {
+        ByteBuffer buffer = readAsset("models/" + name + ".glb");
+        MaterialProvider provider = new UbershaderProvider(modelViewer.getEngine());
+        AssetLoader assetLoader = new AssetLoader(
+                modelViewer.getEngine(),
+                provider,
+                EntityManager.get()
+        );
+        chocksAsset = assetLoader.createAsset(buffer);
+
+        ResourceLoader resourceLoader = new ResourceLoader(modelViewer.getEngine());
+        resourceLoader.loadResources(chocksAsset);
+
+        // Debug logs
+        FilamentUtils.logAssetHierarchy(chocksAsset);
+        FilamentUtils.logAllEntities(chocksAsset);
+        FilamentUtils.logAllEntitiesWithMaterials(chocksAsset);
+
+        // --- Collect the chocks you want to manipulate ---
+        frontChockEntities.clear();
+        backChockEntities.clear();
+        chockBaseLocal.clear();
+
+        TransformManager tm = modelViewer.getEngine().getTransformManager();
+        int[] entities = chocksAsset.getEntities();
+
+        for (int e : entities) {
+            String n = chocksAsset.getName(e);
+            if (n == null) continue;
+
+            if (n.contains("Front")) {
+                frontChockEntities.add(e);
+                int inst = tm.getInstance(e);
+                float[] base = new float[16];
+                tm.getTransform(inst, base);
+                chockBaseLocal.put(e, base);
+                android.util.Log.d("Chocks", "Found FRONT chock: " + n + " id=" + e);
+            } else if (n.contains("Back")) {
+                backChockEntities.add(e);
+                int inst = tm.getInstance(e);
+                float[] base = new float[16];
+                tm.getTransform(inst, base);
+                chockBaseLocal.put(e, base);
+                android.util.Log.d("Chocks", "Found BACK chock: " + n + " id=" + e);
+            }
+        }
+
+        // Apply transform to root
+        int root = chocksAsset.getRoot();
+        int instance = tm.getInstance(root);
+
+        float scale = 0.8f;
+        float angleX = -5f;
+        float angleY = 0f;
+        float angleZ = 0f;
+
+        float[] matrix = createTransform(scale, angleX, angleY, angleZ);
+        tm.setTransform(instance, matrix);
+
+        modelViewer.getScene().addEntities(chocksAsset.getEntities());
+    }
 
     private ByteBuffer readAsset(String assetName) {
         try (InputStream input = getAssets().open(assetName)) {
@@ -927,6 +1005,7 @@ public class SimulationPage extends AppCompatActivity {
         if (elapsed >= 7) {
             if (chockInstalled) {
                 lastDetectionResult = "Chock Installed";
+                resetChocks();
             }
             else if (normalStop) { //
                 lastDetectionResult = "Normal Stop";
@@ -2309,4 +2388,108 @@ public class SimulationPage extends AppCompatActivity {
             tm.setTransform(instance, matrix);
         }
     }
+
+    private static final long CHOCK_ANIM_DURATION = 1000L; // 1 second
+
+    // Animate all front chocks to the far left, back chocks to the far right
+    public void hideChocks() {
+        if (!isChocked) return;
+
+        isChocked = false;
+        TransformManager tm = modelViewer.getEngine().getTransformManager();
+
+        // Animate fronts (to -100 on X)
+        for (int e : frontChockEntities) {
+            int inst = tm.getInstance(e);
+            float[] base = chockBaseLocal.get(e);
+            if (base == null) continue;
+
+            float startX = base[12];
+            float endX = -1f;
+
+            ValueAnimator animator = ValueAnimator.ofFloat(startX, endX);
+            animator.setDuration(CHOCK_ANIM_DURATION);
+            animator.addUpdateListener(animation -> {
+                float x = (float) animation.getAnimatedValue();
+                float[] moved = base.clone();
+                moved[12] = x;
+                tm.setTransform(inst, moved);
+            });
+            animator.start();
+        }
+
+        // Animate backs (to +100 on X)
+        for (int e : backChockEntities) {
+            int inst = tm.getInstance(e);
+            float[] base = chockBaseLocal.get(e);
+            if (base == null) continue;
+
+            float startX = base[12];
+            float endX = 1f;
+
+            ValueAnimator animator = ValueAnimator.ofFloat(startX, endX);
+            animator.setDuration(CHOCK_ANIM_DURATION);
+            animator.addUpdateListener(animation -> {
+                float x = (float) animation.getAnimatedValue();
+                float[] moved = base.clone();
+                moved[12] = x;
+                tm.setTransform(inst, moved);
+            });
+            animator.start();
+        }
+
+        android.util.Log.d("Chocks", "Animating chocks hide (front -> left, back -> right)");
+    }
+
+    // Animate chocks back to their original transform
+    public void resetChocks() {
+        if (isChocked) return;
+
+        isChocked = true;
+        TransformManager tm = modelViewer.getEngine().getTransformManager();
+
+        // Animate fronts back
+        for (int e : frontChockEntities) {
+            int inst = tm.getInstance(e);
+            float[] base = chockBaseLocal.get(e);
+            if (base == null) continue;
+
+            float startX = tm.getTransform(inst, new float[16])[12]; // current x
+            float endX = base[12];
+
+            ValueAnimator animator = ValueAnimator.ofFloat(startX, endX);
+            animator.setDuration(CHOCK_ANIM_DURATION);
+            animator.addUpdateListener(animation -> {
+                float x = (float) animation.getAnimatedValue();
+                float[] moved = base.clone();
+                moved[12] = x;
+                tm.setTransform(inst, moved);
+            });
+            animator.start();
+        }
+
+        // Animate backs back
+        for (int e : backChockEntities) {
+            int inst = tm.getInstance(e);
+            float[] base = chockBaseLocal.get(e);
+            if (base == null) continue;
+
+            float startX = tm.getTransform(inst, new float[16])[12];
+            float endX = base[12];
+
+            ValueAnimator animator = ValueAnimator.ofFloat(startX, endX);
+            animator.setDuration(CHOCK_ANIM_DURATION);
+            animator.addUpdateListener(animation -> {
+                float x = (float) animation.getAnimatedValue();
+                float[] moved = base.clone();
+                moved[12] = x;
+                tm.setTransform(inst, moved);
+            });
+            animator.start();
+        }
+
+        android.util.Log.d("Chocks", "Animating chocks reset to original");
+    }
+
+
 }
