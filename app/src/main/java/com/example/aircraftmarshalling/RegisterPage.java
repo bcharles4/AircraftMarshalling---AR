@@ -92,8 +92,8 @@ public class RegisterPage extends AppCompatActivity {
             return false;
         }
 
-        if (studentId.isEmpty() || studentId.length() < 6) {
-            etStudentId.setError("Invalid student ID");
+        if (studentId.isEmpty() || studentId.length() < 10) {
+            etStudentId.setError("Invalid student ID.");
             etStudentId.requestFocus();
             return false;
         }

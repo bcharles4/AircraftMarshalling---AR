@@ -1009,8 +1009,6 @@ public class SimulationPage extends AppCompatActivity {
             else if (normalStop) { //
                 lastDetectionResult = "Normal Stop";
 //                callMoveRunway(2);
-                lefEngineStarted = false;
-                rightEngineStarted = false;
             }
 //            else if (emergencyStop) { //
 //                lastDetectionResult = "Emergency Stop";
