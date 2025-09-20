@@ -180,6 +180,8 @@ public class ModulePage extends AppCompatActivity {
             intent.putExtra("title", "Chocks are Installed Signal");
             intent.putExtra("description", "This signal informs the pilot that wheel chocks have been placed and the aircraft is secure. It is safe to shut down engines or begin unloading. The marshaller mimics the placement of chocks by holding fists together in front of the body." );
             intent.putExtra("imageResId", R.drawable.s_chocks);
+            intent.putExtra("videoResId", R.raw.chocks_in);
+
 
 
             // Start the activity
