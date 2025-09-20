@@ -365,7 +365,6 @@ public class SimulationPage extends AppCompatActivity {
     public void callMoveRunway(int seconds) {
         if (!lefEngineStarted || !rightEngineStarted) return;
         if (runwayMoving) return; // Prevent overlapping moves
-        hideChocks();
         runwayMoving = true;
         runwayMoveStartTime = System.currentTimeMillis();
         runwayMoveDurationMs = seconds * 1000L;
@@ -1029,11 +1028,13 @@ public class SimulationPage extends AppCompatActivity {
             else if (startEngineL) {
                 lastDetectionResult = "Start Left Engine";
                 lefEngineStarted = true;
+                if (lefEngineStarted && rightEngineStarted) { hideChocks();}
 //                callMoveRunway(4);
             }
             else if (startEngineR) {
                 lastDetectionResult = "Start Right Engine";
                 rightEngineStarted = true;
+                if (lefEngineStarted && rightEngineStarted) { hideChocks();}
 //                callMoveRunway(4);
             }
             else if (turnRight) {
