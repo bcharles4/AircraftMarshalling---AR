@@ -108,7 +108,7 @@ public class LoginPage extends AppCompatActivity {
                             String userId = userJson.getString("_id");
                             String name = userJson.getString("name");
                             String emailResponse = userJson.getString("email");
-                            String phone = userJson.getString("phone");
+                            String studentId = userJson.getString("studentId"); // ✅ fixed
                             int score = userJson.optInt("score", 0);
 
                             Toast.makeText(LoginPage.this, "Welcome, " + name + "!", Toast.LENGTH_SHORT).show();
@@ -118,7 +118,7 @@ public class LoginPage extends AppCompatActivity {
                             intent.putExtra("userId", userId);
                             intent.putExtra("name", name);
                             intent.putExtra("email", emailResponse);
-                            intent.putExtra("phone", phone);
+                            intent.putExtra("studentId", studentId); // ✅ pass studentId instead
                             intent.putExtra("score", score);
                             startActivity(intent);
                             finish();
