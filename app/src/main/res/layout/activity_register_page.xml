@@ -8,8 +8,6 @@
     android:background="@color/bg_color"
     tools:context=".RegisterPage">
 
-
-
     <!-- Back Button (Top Left) -->
     <ImageView
         android:id="@+id/back_button"
@@ -20,19 +18,35 @@
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintStart_toStartOf="parent" />
 
-    <!-- Logo (Below the Back Button) -->
+    <!-- Logo -->
     <ImageView
         android:id="@+id/logo"
-        android:layout_width="350dp"
-        android:layout_height="300dp"
+        android:layout_width="250dp"
+        android:layout_height="200dp"
         android:src="@drawable/am_logo"
         android:contentDescription="App Logo"
         app:layout_constraintTop_toBottomOf="@id/back_button"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginTop="-56dp"/>
+        android:layout_marginTop="-56dp" />
 
-    <!-- Name Input -->
+    <!-- Student ID Input -->
+    <EditText
+        android:id="@+id/et_student_no"
+        android:layout_width="320dp"
+        android:layout_height="50dp"
+        android:hint="Enter Student ID"
+        android:inputType="textPersonName"
+        android:padding="10dp"
+        android:textColor="@color/black"
+        android:textColorHint="@color/black"
+        android:background="@android:drawable/edit_text"
+        app:layout_constraintTop_toBottomOf="@id/logo"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="30dp" />
+
+    <!-- Full Name Input -->
     <EditText
         android:id="@+id/et_name"
         android:layout_width="320dp"
@@ -43,11 +57,12 @@
         android:textColor="@color/black"
         android:textColorHint="@color/black"
         android:background="@android:drawable/edit_text"
-        app:layout_constraintTop_toBottomOf="@id/logo"
+        app:layout_constraintTop_toBottomOf="@id/et_student_no"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginTop="30dp"/>
+        android:layout_marginTop="16dp" />
 
+    <!-- Email Input -->
     <EditText
         android:id="@+id/et_email"
         android:layout_width="320dp"
@@ -61,9 +76,9 @@
         app:layout_constraintTop_toBottomOf="@id/et_name"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginTop="16dp"/>
+        android:layout_marginTop="16dp" />
 
-
+    <!-- Password Input -->
     <EditText
         android:id="@+id/et_password"
         android:layout_width="320dp"
@@ -77,25 +92,23 @@
         app:layout_constraintTop_toBottomOf="@id/et_email"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginTop="16dp"/>
+        android:layout_marginTop="16dp" />
 
-    <!-- Phone Number Input -->
-    <EditText
-        android:id="@+id/et_phone"
-        android:layout_width="320dp"
-        android:layout_height="50dp"
-        android:hint="Enter Phone Number"
-        android:inputType="phone"
-        android:padding="10dp"
-        android:textColor="@color/black"
-        android:textColorHint="@color/black"
-        android:background="@android:drawable/edit_text"
-        app:layout_constraintTop_toBottomOf="@id/et_password"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginTop="16dp"/>
-
-
+<!--    &lt;!&ndash; Phone Number Input &ndash;&gt;-->
+<!--    <EditText-->
+<!--        android:id="@+id/et_phone"-->
+<!--        android:layout_width="320dp"-->
+<!--        android:layout_height="50dp"-->
+<!--        android:hint="Enter Phone Number"-->
+<!--        android:inputType="phone"-->
+<!--        android:padding="10dp"-->
+<!--        android:textColor="@color/black"-->
+<!--        android:textColorHint="@color/black"-->
+<!--        android:background="@android:drawable/edit_text"-->
+<!--        app:layout_constraintTop_toBottomOf="@id/et_password"-->
+<!--        app:layout_constraintStart_toStartOf="parent"-->
+<!--        app:layout_constraintEnd_toEndOf="parent"-->
+<!--        android:layout_marginTop="16dp" />-->
 
     <!-- Register Button -->
     <Button
@@ -108,10 +121,10 @@
         android:textColor="@color/black"
         android:textAllCaps="false"
         android:textStyle="bold"
-        app:layout_constraintTop_toBottomOf="@id/et_phone"
+        app:layout_constraintTop_toBottomOf="@id/et_password"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginTop="30dp"/>
+        android:layout_marginTop="30dp" />
 
     <!-- Login Link -->
     <TextView
@@ -125,6 +138,6 @@
         android:layout_marginBottom="20dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"/>
+        app:layout_constraintEnd_toEndOf="parent" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

@@ -153,22 +153,6 @@ public class ModulePage extends AppCompatActivity {
             startActivity(intent);
         });
 
-        ImageView brakes_on_fire = findViewById(R.id.brakes_on_fire);
-        brakes_on_fire.setOnClickListener(v -> {
-            // Create an intent to launch the CuisineViewer
-            Intent intent = new Intent(ModulePage.this, ModuleViewer.class);
-
-            // Pass data to the intent
-            intent.putExtra("title", "Brakes on Fire Signal");
-            intent.putExtra("description", "This signal notifies the pilot that the aircraft’s brake system is overheating or on fire. Immediate action must be taken to prevent a fire spread or brake failure. The marshaller points at the wheel area and mimics fire using a rapid fanning motion.");
-            intent.putExtra("imageResId", R.drawable.s_brakes_on_fire);
-            intent.putExtra("videoResId", R.raw.brakes_on_fire);
-
-
-            // Start the activity
-            startActivity(intent);
-        });
-
 
         ImageView turn_right = findViewById(R.id.turn_right);
         turn_right.setOnClickListener(v -> {
@@ -187,20 +171,20 @@ public class ModulePage extends AppCompatActivity {
             startActivity(intent);
         });
 
-//        ImageView chocks = findViewById(R.id.chocks);
-//        chocks.setOnClickListener(v -> {
-//            // Create an intent to launch the CuisineViewer
-//            Intent intent = new Intent(ModulePage.this, ModuleViewer.class);
-//
-//            // Pass data to the intent
-//            intent.putExtra("title", "Chocks are Installed Signal");
-//            intent.putExtra("description", "This signal informs the pilot that wheel chocks have been placed and the aircraft is secure. It is safe to shut down engines or begin unloading. The marshaller mimics the placement of chocks by holding fists together in front of the body." );
-//            intent.putExtra("imageResId", R.drawable.s_chocks);
-//
-//
-//            // Start the activity
-//            startActivity(intent);
-//        });
+        ImageView chocks = findViewById(R.id.chocks_in);
+        chocks.setOnClickListener(v -> {
+            // Create an intent to launch the CuisineViewer
+            Intent intent = new Intent(ModulePage.this, ModuleViewer.class);
+
+            // Pass data to the intent
+            intent.putExtra("title", "Chocks are Installed Signal");
+            intent.putExtra("description", "This signal informs the pilot that wheel chocks have been placed and the aircraft is secure. It is safe to shut down engines or begin unloading. The marshaller mimics the placement of chocks by holding fists together in front of the body." );
+            intent.putExtra("imageResId", R.drawable.s_chocks);
+
+
+            // Start the activity
+            startActivity(intent);
+        });
 
         ImageView turn_left = findViewById(R.id.turn_left);
         turn_left.setOnClickListener(v -> {

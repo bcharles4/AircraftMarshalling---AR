@@ -268,6 +268,36 @@
                         android:layout_marginTop="4dp"/>
                 </LinearLayout>
 
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    app:layout_columnWeight="1"
+                    android:gravity="center"
+                    android:padding="4dp">
+
+                    <ImageView
+                        android:id="@+id/chocks_in"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:adjustViewBounds="true"
+                        android:scaleType="fitCenter"
+                        android:background="@drawable/image_container_bg"
+                        android:src="@drawable/s_chocks"
+                        android:contentDescription="Pass Control" />
+
+                    <TextView
+                        android:id="@+id/chocks_in_label"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Chocks In"
+                        android:textStyle="bold"
+                        android:textColor="@color/white"
+                        android:textSize="14sp"
+                        android:gravity="center"
+                        android:layout_marginTop="4dp"/>
+                </LinearLayout>
+
                 <!-- Engine on Fire -->
                 <LinearLayout
                     android:layout_width="0dp"
@@ -299,36 +329,7 @@
                         android:layout_marginTop="4dp"/>
                 </LinearLayout>
 
-                <!-- Brakes on Fire -->
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    app:layout_columnWeight="1"
-                    android:gravity="center"
-                    android:padding="4dp">
 
-                    <ImageView
-                        android:id="@+id/brakes_on_fire"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:adjustViewBounds="true"
-                        android:scaleType="fitCenter"
-                        android:background="@drawable/image_container_bg"
-                        android:src="@drawable/s_brakes_on_fire"
-                        android:contentDescription="Brakes on Fire" />
-
-                    <TextView
-                        android:id="@+id/brakes_on_fire_label"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Brakes on Fire"
-                        android:textStyle="bold"
-                        android:textColor="@color/white"
-                        android:textSize="14sp"
-                        android:gravity="center"
-                        android:layout_marginTop="4dp"/>
-                </LinearLayout>
 
                 <!-- Turn Right -->
                 <LinearLayout

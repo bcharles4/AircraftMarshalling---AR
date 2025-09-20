@@ -26,7 +26,7 @@ public class RegisterPage extends AppCompatActivity {
 
     private static final String REGISTER_URL = "https://aircraft-marshalling-f350337809da.herokuapp.com/api/users/register";
     private RequestQueue requestQueue;
-    private EditText etName, etEmail, etPhone, etPassword;
+    private EditText etName, etEmail, etStudentId, etPassword;
     private Button btnRegister;
 
     @Override
@@ -43,34 +43,37 @@ public class RegisterPage extends AppCompatActivity {
             return insets;
         });
 
+        // Back button
         ImageView backButton = findViewById(R.id.back_button);
         backButton.setOnClickListener(v -> finish());
 
+        // Go to login page
         TextView tvLogin = findViewById(R.id.tv_login);
         tvLogin.setOnClickListener(v -> {
             Intent intent = new Intent(RegisterPage.this, LoginPage.class);
             startActivity(intent);
         });
 
+        // Inputs
         etName = findViewById(R.id.et_name);
         etEmail = findViewById(R.id.et_email);
-        etPhone = findViewById(R.id.et_phone);
+        etStudentId = findViewById(R.id.et_student_no);
         etPassword = findViewById(R.id.et_password);
         btnRegister = findViewById(R.id.btn_register);
 
         btnRegister.setOnClickListener(v -> {
             String name = etName.getText().toString().trim();
             String email = etEmail.getText().toString().trim();
-            String phone = etPhone.getText().toString().trim();
+            String studentId = etStudentId.getText().toString().trim();
             String password = etPassword.getText().toString().trim();
 
-            if (!validateInput(name, email, phone, password)) return;
+            if (!validateInput(name, email, studentId, password)) return;
 
-            registerUser(name, email, phone, password);
+            registerUser(name, email, studentId, password);
         });
     }
 
-    private boolean validateInput(String name, String email, String phone, String password) {
+    private boolean validateInput(String name, String email, String studentId, String password) {
         if (name.length() < 5 || name.length() > 64) {
             etName.setError("Name must be between 5 and 64 characters");
             etName.requestFocus();
@@ -89,20 +92,20 @@ public class RegisterPage extends AppCompatActivity {
             return false;
         }
 
-        if (!phone.matches("^09\\d{9}$")) {
-            etPhone.setError("Phone must start with 09 and be 11 digits long");
-            etPhone.requestFocus();
+        if (studentId.isEmpty() || studentId.length() < 4) {
+            etStudentId.setError("Invalid student ID");
+            etStudentId.requestFocus();
             return false;
         }
         return true;
     }
 
-    private void registerUser(String name, String email, String phone, String password) {
+    private void registerUser(String name, String email, String studentId, String password) {
         JSONObject requestBody = new JSONObject();
         try {
             requestBody.put("name", name);
             requestBody.put("email", email);
-            requestBody.put("phone", phone);
+            requestBody.put("studentId", studentId);
             requestBody.put("password", password);
         } catch (JSONException e) {
             e.printStackTrace();
