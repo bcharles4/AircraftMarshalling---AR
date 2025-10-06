@@ -270,7 +270,7 @@ public class ModulePage extends AppCompatActivity {
             int itemId = item.getItemId();
 
             if (itemId == R.id.nav_simulation) {
-                Intent simulationtIntent = new Intent(ModulePage.this, SimulationPage.class);
+                Intent simulationtIntent = new Intent(ModulePage.this, SimulationPage2.class);
                 simulationtIntent.putExtra("name", getIntent().getStringExtra("name"));
                 simulationtIntent.putExtra("email", getIntent().getStringExtra("email"));
                 simulationtIntent.putExtra("phone", getIntent().getStringExtra("phone"));

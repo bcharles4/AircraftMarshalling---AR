@@ -33,7 +33,7 @@
             android:name=".SimulationPage"
             android:exported="false" />
         <activity
-            android:name=".SimulationPage"
+            android:name=".SimulationPage2"
             android:exported="false" />
         <activity
             android:name=".RegisterPage"

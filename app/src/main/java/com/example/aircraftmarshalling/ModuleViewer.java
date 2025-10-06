@@ -72,7 +72,7 @@ public class ModuleViewer extends AppCompatActivity {
             int itemId = item.getItemId();
 
             if (itemId == R.id.nav_simulation) {
-                Intent simulationtIntent = new Intent(ModuleViewer.this, SimulationPage.class);
+                Intent simulationtIntent = new Intent(ModuleViewer.this, SimulationPage2.class);
                 simulationtIntent.putExtra("name", name);
                 simulationtIntent.putExtra("email", email);
                 simulationtIntent.putExtra("phone", phone);
